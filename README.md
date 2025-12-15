@@ -11,8 +11,8 @@ This script automates the process of building the Linux kernel on Ubuntu Noble (
 - A `.deb` package for Debian and Ubuntu-based systems.
 - An *incomplete* Arch Linux package (work in progress).
 
-The goal is to create a streamlined, reproducible kernel build pipeline tailored for Debian and Ubuntu users that may also have an Arch PC or dual boot but just want to compile the kernel once
-Note that if you use _processor_opt=${_processor_opt:-native} you will need to be sure that both CPUs are the same in clang which may make it more suitable for a dual boot configuration
+The goal is to create a streamlined, reproducible kernel build pipeline tailored for Debian and Ubuntu users that may also have an Arch PC or dual boot but just want to compile the kernel once.
+> Note that if you use _processor_opt=${_processor_opt:-native} you will need to be sure that both CPUs are the same in clang which may make it more suitable for a dual boot configuration
 
 ---
 

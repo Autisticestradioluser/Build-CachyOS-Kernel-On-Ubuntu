@@ -342,18 +342,6 @@ if [[ "$_build_nvidia_open" == "yes" || "$_build_nvidia_open_min" == "yes" ]]; t
         print_info "Downloading NVIDIA open driver patch: Add IBT support"
         wget -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/nvidia/0002-Add-IBT-support.patch"
     fi
-
-    # Patch 3
-    if [ ! -f "${DOWNLOAD_DIR}/0003-nvidia-uvm-Remove-unused-get_devmap_page-parameter.patch" ]; then
-        print_info "Downloading NVIDIA open driver patch: Remove unused get_devmap_page parameter"
-        wget -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/nvidia/0003-nvidia-uvm-Remove-unused-get_devmap_page-parameter.patch"
-    fi
-
-    # Patch 4
-    if [ ! -f "${DOWNLOAD_DIR}/0004-nvkms-Limit-default-maximum-TMDS-character-rate-to-3.patch" ]; then
-        print_info "Downloading NVIDIA open driver patch: Limit default maximum TMDS character rate to 3"
-        wget -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/nvidia/0004-nvkms-Limit-default-maximum-TMDS-character-rate-to-3.patch"
-    fi
 fi
 # Clone ZFS if needed
 if [ "$_build_zfs" = "yes" ]; then
@@ -622,8 +610,6 @@ if [[ "$_build_nvidia_open" == "yes" || "$_build_nvidia_open_min" == "yes" ]]; t
     patch -Np1 -i "${DOWNLOAD_DIR}/0001-Enable-atomic-kernel-modesetting-by-default.patch"
     cd "${SRC_DIR}/${_nv_open_pkg}"
     patch -Np1 -i "${DOWNLOAD_DIR}/0002-Add-IBT-support.patch"
-    patch -Np1 -i "${DOWNLOAD_DIR}/0003-nvidia-uvm-Remove-unused-get_devmap_page-parameter.patch"
-    patch -Np1 -i "${DOWNLOAD_DIR}/0004-nvkms-Limit-default-maximum-TMDS-character-rate-to-3.patch"
     cd "${SRC_DIR}/${_srcname}"
 fi
 
@@ -1328,3 +1314,4 @@ echo
 print_success "Build process completed successfully!"
 print_warning "Remember: Ubuntu Noble uses usr-merged filesystem - modules are in /usr/lib/modules!"
 print_info "The /lib/modules path still works due to the /lib -> /usr/lib symlink"
+
