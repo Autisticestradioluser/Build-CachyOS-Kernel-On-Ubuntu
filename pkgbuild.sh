@@ -83,7 +83,7 @@ _build_deb=${_build_deb:-yes}
 
 # Kernel version info
 _major=6.18
-_minor=1
+_minor=2
 #_rcver=rc7
 pkgver=${_major}.${_minor}
 #pkgver=${_major}.${_rcver}
@@ -98,6 +98,13 @@ pkgrel=1
 _nv_ver=580.119.02
 _nv_pkg="NVIDIA-Linux-x86_64-${_nv_ver}"
 _nv_open_pkg="NVIDIA-kernel-module-source-${_nv_ver}"
+
+# b2sums, expected to change with each release
+_kernel_b2sum=2e5cae5fe963cf25344ccfe9426d2edab2583b1bb206f6551d60177777595d4c19200e5e3c35ca41b574d25e8fa49013ea086efe05078e7ec2203c77ea420d51
+_config_b2sum=4193034f32392fe6c551080b2afab61d7efbb3a7205daf73490a102d2649b1fa54e0e91dcd3b99afd29795dbf11c1d1a17e0f9b7fd9747b90d296977f2a7bb77
+_cachy_base_patch_b2sum=810ae795919a4414d386288d484ae1e7e73ea56a827e5f7dca3cebfcec32a3e82bb05c2a6bc450b3a08a1d0aa6d275dbb1f1fb5dde41156e172278c317383e09
+_dkms_clang_patch_b2sum=c7294a689f70b2a44b0c4e9f00c61dbd59dd7063ecbe18655c4e7f12e21ed7c5bb4f5169f5aa8623b1c59de7b2667facb024913ecb9f4c650dabce4e8a7e5452
+
 
 # Patches source
 _patchsource="https://raw.githubusercontent.com/cachyos/kernel-patches/master/${_major}"
@@ -263,21 +270,61 @@ print_info "Downloading Linux kernel ${_stable}..."
         if [ ! -f "${DOWNLOAD_DIR}/${_srcname}.tar.xz" ]; then
         print_info "Downloading a stable kernel from the Linux Foundation CDN"
         wget -P "${DOWNLOAD_DIR}" "https://cdn.kernel.org/pub/linux/kernel/v${pkgver%%.*}.x/${_srcname}.tar.xz"
+        if [[ "$(b2sum ${DOWNLOAD_DIR}/${_srcname}.tar.xz | cut -d' ' -f1)" == $_kernel_b2sum ]]; then
+        echo "✅  Kernel b2sum matches"
+        else
+        echo "❌  Kernel b2sum mismatch"
+        exit 1
+        fi
         else
         print_info "Kernel source already downloaded"
+        if [[ "$(b2sum ${DOWNLOAD_DIR}/${_srcname}.tar.xz | cut -d' ' -f1)" == $_kernel_b2sum ]]; then
+        echo "✅  Kernel b2sum matches"
+        else
+        echo "❌  Kernel b2sum mismatch"
+        exit 1
         fi
     fi
+fi
 
 # Check and download CachyOS config
 if [ ! -f "${DOWNLOAD_DIR}/config" ]; then
     print_info "Downloading CachyOS config..."
     wget -O "${DOWNLOAD_DIR}/config" "https://raw.githubusercontent.com/CachyOS/linux-cachyos/refs/heads/master/linux-cachyos/config"
+        if [[ "$(b2sum ${DOWNLOAD_DIR}/config | cut -d' ' -f1)" == $_config_b2sum ]]; then
+        echo "✅  Config b2sum matches"
+        else
+        echo "❌  Config b2sum mismatch"
+        exit 1
+        fi
+    else
+    echo "Config already downloaded"
+        if [[ "$(b2sum ${DOWNLOAD_DIR}/config | cut -d' ' -f1)" == $_config_b2sum ]]; then
+        echo "✅  Config b2sum matches"
+        else
+        echo "❌  Config b2sum mismatch"
+        exit 1
+        fi
 fi
 
 # Check and download CachyOS base patches
 if [ ! -f "${DOWNLOAD_DIR}/0001-cachyos-base-all.patch" ]; then
     print_info "Downloading CachyOS base patches..."
     wget -P "${DOWNLOAD_DIR}" "${_patchsource}/all/0001-cachyos-base-all.patch"
+        if [[ "$(b2sum ${DOWNLOAD_DIR}/0001-cachyos-base-all.patch | cut -d' ' -f1)" == $_cachy_base_patch_b2sum ]]; then
+        echo "✅  CachyOS base patch b2sum matches"
+        else
+        echo "❌  CachyOS base patch b2sum mismatch"
+        exit 1
+        fi
+    else
+    echo "Already download CachyOS base patch"
+        if [[ "$(b2sum ${DOWNLOAD_DIR}/0001-cachyos-base-all.patch | cut -d' ' -f1)" == $_cachy_base_patch_b2sum ]]; then
+        echo "✅  CachyOS base patch b2sum matches"
+        else
+        echo "❌  CachyOS base patch b2sum mismatch"
+        exit 1
+        fi
 fi
 
 # Download scheduler patches
@@ -310,6 +357,20 @@ if [[ "$_use_llvm_lto" == "thin" || "$_use_llvm_lto" == "full" || "$_use_llvm_lt
     if [ ! -f "${DOWNLOAD_DIR}/dkms-clang.patch" ]; then
         print_info "Downloading LLVM DKMS patch..."
         wget -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/dkms-clang.patch"
+        if [[ "$(b2sum ${DOWNLOAD_DIR}/dkms-clang.patch | cut -d' ' -f1)" == $_dkms_clang_patch_b2sum ]]; then
+        echo "✅  dkms clang patch b2sum matches"
+        else
+        echo "❌  dkms clang patch b2sum mismatch"
+        exit 1
+        fi
+    else
+    echo "Already downloaded dkms clang patch"
+        if [[ "$(b2sum ${DOWNLOAD_DIR}/dkms-clang.patch | cut -d' ' -f1)" == $_dkms_clang_patch_b2sum ]]; then
+        echo "✅  dkms clang patch b2sum matches"
+        else
+        echo "❌  dkms clang patch b2sum mismatch"
+        exit 1
+        fi
     fi
 fi
 
@@ -1314,4 +1375,3 @@ echo
 print_success "Build process completed successfully!"
 print_warning "Remember: Ubuntu Noble uses usr-merged filesystem - modules are in /usr/lib/modules!"
 print_info "The /lib/modules path still works due to the /lib -> /usr/lib symlink"
-

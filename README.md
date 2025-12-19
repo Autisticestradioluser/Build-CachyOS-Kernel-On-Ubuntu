@@ -1,6 +1,6 @@
 # Linux Kernel Builder for Ubuntu with CachyOS Patches (Work in Progress)
 
-> ⚠️ **WARNING**: This is an experimental script under active development. It may contain bugs, incomplete functionality, or unstable behavior. Use at your own risk.. ONLY REPORT ISSUES TO THIS REPOSITORY.
+> ⚠️ **WARNING**: This is an experimental script under active development. It may contain bugs, incomplete functionality, or unstable behavior. Use at your own risk. ONLY REPORT ISSUES TO THIS REPOSITORY.
 
 ---
 
@@ -45,10 +45,17 @@ These patches are applied to the official Linux kernel source code to optimize p
 - Incompatibilities between patch layers and kernel versions
 - Unhandled dependencies or build environment quirks
 
-**⚠️ Security Note**: This script does **not** automatically verify checksums (b2sums) for downloaded files. You're encouraged to manually verify integrity 
-before proceeding with the build. This is particularly important for sensitive components like kernel sources and patches.
+**✅ Source integrity checks**: The script now implements b2sum verification for source files (kernel, config, patches) as per CachyOS PKGBUILD standards. This verifies integrity of downloaded components before build begins.
 
-**Please ONLY report bugs via [this repository's issue tracker](https://github.com/Autisticestradioluser/Build-CachyOS-Kernel-On-Ubuntu/issues)**
+**⚠️ Package integrity**: Package-side sum checks (for .deb and Arch packages) are **still not implemented**. The generated packages do not include integrity checks. You are responsible for verifying package integrity after build.
+
+**⚠️ Security Note**: 
+- The script **now verifies b2sums** for downloaded sources some patches
+- It **does NOT verify package integrity** for generated .deb or Arch packages
+- Manual verification of source integrity is recommended before proceeding with build
+- For sensitive components like kernel sources and patches, the script verifies integrity (b2sum) before proceeding with the build
+
+Please ONLY report bugs via [this repository's issue tracker](https://github.com/Autisticestradioluser/Build-CachyOS-Kernel-On-Ubuntu/issues)
 
 ---
 
@@ -75,7 +82,6 @@ This script is specifically designed for:
 
 - **Modern Ubuntu Support**: Handles merged-usr filesystem structure with `/lib -> /usr/lib` symlink
 - **Configurable Build Options**: Customize scheduler, optimization, kernel modules, and more
-- **Multiple Kernel Source Options**: Support for both GitHub and Linux Foundation repositories
 - **NVIDIA Driver Integration**: Build with NVIDIA Proprietary 580 series drivers or open drivers for Turing+
 - **Arch Linux Support**: Generate mkinitcpio presets (though installation is incomplete, only makes a corrupted package due to no metedata for the package manager yet)
 
@@ -85,9 +91,9 @@ This script is specifically designed for:
 
 ### Before You Begin
 
-1. **Verify system requirements**: Make sure you have the latest clang-21 from LLVM, fakeroot, and dpkg-dev if you want to build it into a .deb package
+1. **Verify system requirements**: Make sure you have the latest clang-21 from LLVM, fakeroot, and dpkg-dev if you want to build it into a .deb package. Minimum of 8 GB RAM with zstd compressed zram for full LTO build.
 
-2. **Manual verification**: It's recommended to verify checksums (b2sums) for all downloaded packages before use.
+2. **Manual verification**: It's recommended to verify integrity of downloaded components using b2sums (the script does this automatically for most files, but you may want to verify the source files manually before proceeding)
 
 3. **NVIDIA Notes**: The script uses NVIDIA driver series 580 (legacy drivers for Maxwell-Pascal architectures). For Turing+ GPUs, the NVIDIA open driver is available and often a better choice.
 
@@ -95,9 +101,9 @@ This script is specifically designed for:
 
 > ⚠️ **This script is experimental and may cause system instability if used incorrectly**
 > 
-> - Building the kernel requires root privileges
 > - The NVIDIA driver integration may conflict with existing NVIDIA installations
 > - The Arch Linux package is **not fully functional** and should only be used for manual installation experiments
+> - **Source integrity is verified but package integrity is not** - Verify packages manually after build
 
 ---
 
@@ -126,4 +132,28 @@ After successful build, you'll find:
 - Arch Linux package (incomplete) at: `./linux-cachyos-<configuration>-<version>-x86_64.pkg.tar.zst`
 - Configuration files at: `./config-<kernel-version>`
 
-> **Important**: The Arch package is experimental and likely requires manual adjustments to work. The Debian package is the only supported output. ONLY REPORT ISSUES TO THIS REPOSITORY
+> **Important**: The Arch package is experimental and likely requires manual adjustments to work. The Debian package is the only supported output.
+> **Security Note**: The generated packages do not include checksums. It is recommended to manually verify the package before installation.
+
+> **Source integrity is verified**: The script now checks b2sums for downloaded sources and patches, but package integrity verification is not implemented.
+
+---
+
+## 📋 Additional Notes
+
+### Security Considerations
+
+- ✅ **Source verification**: All downloaded kernel sources, configuration files, and some patches are verified using b2sums before build begins
+- ❌ **Package verification**: Generated .deb and Arch packages **do not** have checksums. Manual verification is required for package integrity
+- 🔐 **Critical**: If you're building for production systems, always manually verify the integrity of both source files and final packages
+
+---
+
+## 📌 Final Recommendations
+
+1. Always verify source integrity (b2sum) before starting the build
+2. For production systems, manually verify package integrity after build
+3. Keep your build environment clean and verified
+4. The script is experimental - use at your own risk
+
+Remember: Ubuntu Noble uses usr-merged filesystem - modules are in `/usr/lib/modules/` (accessed via `/lib/modules` symlink)
