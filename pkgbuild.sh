@@ -77,13 +77,13 @@ _propeller=${_propeller:-no}
 _propeller_profiles=${_propeller_profiles:-no}
 # build mkinitcpio.d preset for arch users, valid opts: 'no', 'yes', 'ext': yes (included in package for distros that use mkinitcpio such as Arch), or 'ext' external (placed inside build dir where the resulting .tar.zst for kernel will be so you can use it on Arch too)
 # WORK IN PROGRESS: 'yes' here should build you a package to install on Arch, but we don't currently make metadata to do this
-_build_mkinitcpiod_preset=${_build_mkinitcpiod_preset:-no}
+_build_mkinitcpiod_preset=${_build_mkinitcpiod_preset:-yes}
 # Build deb package for debian/ubuntu
 _build_deb=${_build_deb:-yes}
 
 # Kernel version info
 _major=6.18
-_minor=2
+_minor=4
 #_rcver=rc7
 pkgver=${_major}.${_minor}
 #pkgver=${_major}.${_rcver}
@@ -94,15 +94,16 @@ _srcname=linux-${_stable}
 # Put a verison in here that is higher than your previous one
 pkgrel=1
 
-# NVIDIA driver version, 580.119.02 is latest for maxwell-pascal vs 590.44.01 beta is turing+ but nvidia-open is better for that while maxwell-pascal need 580-series
+# NVIDIA driver version, 580.119.02 is latest for maxwell-pascal vs 590.44.01 beta is turing+ but nvidia-open is better for that while maxwell-pascal need 580-series proprietary drivers
 _nv_ver=580.119.02
 _nv_pkg="NVIDIA-Linux-x86_64-${_nv_ver}"
-_nv_open_pkg="NVIDIA-kernel-module-source-${_nv_ver}"
+_nv_open_ver=590.48.01
+_nv_open_pkg="NVIDIA-kernel-module-source-${_nv_open_ver}"
 
-# b2sums, expected to change with each release
-_kernel_b2sum=2e5cae5fe963cf25344ccfe9426d2edab2583b1bb206f6551d60177777595d4c19200e5e3c35ca41b574d25e8fa49013ea086efe05078e7ec2203c77ea420d51
-_config_b2sum=4193034f32392fe6c551080b2afab61d7efbb3a7205daf73490a102d2649b1fa54e0e91dcd3b99afd29795dbf11c1d1a17e0f9b7fd9747b90d296977f2a7bb77
-_cachy_base_patch_b2sum=810ae795919a4414d386288d484ae1e7e73ea56a827e5f7dca3cebfcec32a3e82bb05c2a6bc450b3a08a1d0aa6d275dbb1f1fb5dde41156e172278c317383e09
+# b2sums, expected to change with each release, current 6.18.3 b2sums
+_kernel_b2sum=3cb595f16f164583bdc80022d3f011f683d0b31b618b005bbc85a77005406f45ec9a6a8941976926dbdb79e0f392cc1b70ce2a48fd7d8fa44f131f937f2d38b4
+_config_b2sum=81fafd3adcaf3b690d8d4791693e68c7ae921d103ebfd70e8d0ae15cd05ecde5e6672ae43c3a7875686d883c1f5b82d2c8b37b40aee8dcb0563913f9dd6469b6
+_cachy_base_patch_b2sum=38d1c42193033ce306d45ad4f8e3116fd1714ffdab1d5b2af94cd87d3b4078ca50fbdf56f155a60f86ddbace6824d1fa3c87e60e5b1b1bea1e9e14fc636841cf
 _dkms_clang_patch_b2sum=c7294a689f70b2a44b0c4e9f00c61dbd59dd7063ecbe18655c4e7f12e21ed7c5bb4f5169f5aa8623b1c59de7b2667facb024913ecb9f4c650dabce4e8a7e5452
 
 
@@ -387,9 +388,9 @@ if [[ "$_build_nvidia" == "yes" || "$_build_nvidia_min" == "yes" ]]; then
 fi
 
 if [[ "$_build_nvidia_open" == "yes" || "$_build_nvidia_open_min" == "yes" ]]; then
-    print_info "Downloading NVIDIA open driver ${_nv_ver}..."
+    print_info "Downloading NVIDIA open driver ${_nv_open_ver}..."
     if [ ! -f "${DOWNLOAD_DIR}/${_nv_open_pkg}.tar.xz" ]; then
-        wget -P "${DOWNLOAD_DIR}" "https://download.nvidia.com/XFree86/${_nv_open_pkg%"-$_nv_ver"}/${_nv_open_pkg}.tar.xz"
+        wget -P "${DOWNLOAD_DIR}" "https://download.nvidia.com/XFree86/${_nv_open_pkg%"-$_nv_open_ver"}/${_nv_open_pkg}.tar.xz"
     fi
 
     # Patch 1
@@ -408,7 +409,7 @@ fi
 if [ "$_build_zfs" = "yes" ]; then
     print_info "Cloning ZFS repository..."
     if [ ! -d "${SRC_DIR}/zfs" ]; then
-        git clone --revision=d52214480c2659dc0ffbf0c4267166da8f5e3af9 --depth=1 https://github.com/cachyos/zfs.git "${SRC_DIR}/zfs"
+        git clone --revision=743334913e5a5f60baf287bcc6d8a23515b02ac5 --depth=1 https://github.com/cachyos/zfs.git "${SRC_DIR}/zfs"
         cd "${BUILD_DIR}"
     fi
 fi
@@ -417,9 +418,9 @@ print_step "Step 5: Extracting and Preparing Sources"
 print_info "Extracting kernel source..."
 cd "${SRC_DIR}"
 if [[ -n "$_rcver" ]]; then
-    tar -xvf "${DOWNLOAD_DIR}/v${_stable}.tar.gz"
+    tar -xf "${DOWNLOAD_DIR}/v${_stable}.tar.gz"
 else
-    tar -xvf "${DOWNLOAD_DIR}/linux-${_stable}.tar.xz"
+    tar -xf "${DOWNLOAD_DIR}/linux-${_stable}.tar.xz"
 fi
 cd "${_srcname}"
 
@@ -926,9 +927,9 @@ build_deb_package() {
     # 2. Set up package parameters (determine package name)
     local kernel_type
     local package_suffix=""
+    local nvidia_version=""
     nvidia_suffix=""
     local nvidia_open_suffix=""
-    local nvidia_version="${_nv_ver}"
     local extra_deb_ver=""
     if [ "$_cpusched" == "cachyos" ]; then
     # Currently using BORE like upstream was/is
@@ -940,10 +941,12 @@ build_deb_package() {
         nvidia_suffix="-nvidia"
         extra_deb_ver="-${_nv_ver}"
         package_suffix="${nvidia_suffix}"
+        nvidia_version="${_nv_ver}"
     elif [[ "$_build_nvidia_open" == "yes" || "$_build_nvidia_open_min" == "yes" ]]; then
         nvidia_open_suffix="-nvidia-open"
-        extra_deb_ver="-${_nv_ver}"
+        extra_deb_ver="-${_nv_open_ver}"
         package_suffix="${nvidia_open_suffix}"
+        nvidia_version="${_nv_open_ver}"
     fi
 
     # The base package name
