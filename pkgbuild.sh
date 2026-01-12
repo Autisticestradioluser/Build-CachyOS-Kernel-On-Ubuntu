@@ -83,7 +83,7 @@ _build_deb=${_build_deb:-yes}
 
 # Kernel version info
 _major=6.18
-_minor=4
+_minor=5
 #_rcver=rc7
 pkgver=${_major}.${_minor}
 #pkgver=${_major}.${_rcver}
@@ -100,10 +100,10 @@ _nv_pkg="NVIDIA-Linux-x86_64-${_nv_ver}"
 _nv_open_ver=590.48.01
 _nv_open_pkg="NVIDIA-kernel-module-source-${_nv_open_ver}"
 
-# b2sums, expected to change with each release, current 6.18.3 b2sums
-_kernel_b2sum=3cb595f16f164583bdc80022d3f011f683d0b31b618b005bbc85a77005406f45ec9a6a8941976926dbdb79e0f392cc1b70ce2a48fd7d8fa44f131f937f2d38b4
+# b2sums, expected to change with each release, current 6.18.5 b2sums
+_kernel_b2sum=9294ae977d7b8b929c476e649cbb116969a674d3923e5a4cddf8615ee5ba373761630f1a6397045d9ebe7eeaa87a3fffae3628aebc1ca4c7db5561b1c4513289
 _config_b2sum=81fafd3adcaf3b690d8d4791693e68c7ae921d103ebfd70e8d0ae15cd05ecde5e6672ae43c3a7875686d883c1f5b82d2c8b37b40aee8dcb0563913f9dd6469b6
-_cachy_base_patch_b2sum=38d1c42193033ce306d45ad4f8e3116fd1714ffdab1d5b2af94cd87d3b4078ca50fbdf56f155a60f86ddbace6824d1fa3c87e60e5b1b1bea1e9e14fc636841cf
+_cachy_base_patch_b2sum=84b3aea4df9b05f25b21ae51157f5897ad8698879ec7140ba96505ca2e559281d2588e71c0e7d8f15b8525188d58650a2eb53dce58f5780c90cc32d858046909
 _dkms_clang_patch_b2sum=c7294a689f70b2a44b0c4e9f00c61dbd59dd7063ecbe18655c4e7f12e21ed7c5bb4f5169f5aa8623b1c59de7b2667facb024913ecb9f4c650dabce4e8a7e5452
 
 
@@ -1185,17 +1185,15 @@ if [ -d /etc/kernel/postrm.d ]; then
 fi
 
 if [ "\$1" = purge ]; then
-    for extra_file in modules.dep modules.isapnpmap modules.pcimap \
-                      modules.usbmap modules.parportmap \
-                      modules.generic_string modules.ieee1394map \
-                      modules.ieee1394map modules.pnpbiosmap \
-                      modules.alias modules.ccwmap modules.inputmap \
-                      modules.symbols modules.ofmap \
-                      modules.seriomap modules.\*.bin \
-                      modules.softdep modules.weakdep modules.devname; do
-	eval rm -f /lib/modules/\$version/\$extra_file
-    done
-    rmdir /lib/modules/\$version || true
+        moddir="/lib/modules/\$version"
+          if [ -d "\$moddir" ]; then
+        # Safely delete everything inside the directory
+        find "\$moddir" -mindepth 1 -delete 2>/dev/null || {
+            echo "Warning: find failed, falling back to rm -rf" >&2
+            rm -rf "\$moddir"/*
+            }
+            # Try to remove the now-empty directory
+            rmdir "\$moddir" 2>/dev/null || true
 fi
 
 if [ "\$1" = remove ] || [ "\$1" = purge ]; then
