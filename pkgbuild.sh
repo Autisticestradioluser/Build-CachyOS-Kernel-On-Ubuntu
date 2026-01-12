@@ -1,5 +1,5 @@
 #!/bin/bash
-# CachyOS style Kernel Build Script for Ubuntu Noble 24.04 - USR-MERGE FIXED VERSION
+# CachyOS style Kernel Build Script for Ubuntu Resolute 24.04 - USR-MERGE FIXED VERSION
 # Properly handles modern Ubuntu's merged-usr filesystem structure
 
 set -e
@@ -23,7 +23,7 @@ _cachy_config=${_cachy_config:-yes}
 # CPU scheduler: bore, bmq, hardened, cachyos, eevdf, rt, rt-bore
 # bore is better for interactive apps but is an unfair scheduler which can introduce instability for VMs hosted with BORE on the host (BORE on VMs seems okay)
 # use EEVDF for VM hosts
-_cpusched=${_cpusched:-bore}
+_cpusched=${_cpusched:-bmq}
 # Tweak config with nconfig/xconfig
 _makenconfig=${_makenconfig:-no}
 _makexconfig=${_makexconfig:-no}
@@ -47,7 +47,7 @@ _preempt=${_preempt:-full}
 # Transparent Hugepages: always, madvise
 _hugepage=${_hugepage:-always}
 # CPU optimization: native, zen4, generic_v[1-4]
-_processor_opt=${_processor_opt:-native}
+_processor_opt=${_processor_opt:-generic_v3}
 # LLVM LTO: none, thin, full, thin-dist
 # use zram-generator and make a zstd zram device with zram = ram * 4 if you have at least 8 GB RAM to build with full LTO
 _use_llvm_lto=${_use_llvm_lto:-full}
@@ -83,7 +83,7 @@ _build_deb=${_build_deb:-yes}
 
 # Kernel version info
 _major=6.18
-_minor=4
+_minor=5
 #_rcver=rc7
 pkgver=${_major}.${_minor}
 #pkgver=${_major}.${_rcver}
@@ -101,9 +101,9 @@ _nv_open_ver=590.48.01
 _nv_open_pkg="NVIDIA-kernel-module-source-${_nv_open_ver}"
 
 # b2sums, expected to change with each release, current 6.18.3 b2sums
-_kernel_b2sum=3cb595f16f164583bdc80022d3f011f683d0b31b618b005bbc85a77005406f45ec9a6a8941976926dbdb79e0f392cc1b70ce2a48fd7d8fa44f131f937f2d38b4
+_kernel_b2sum=9294ae977d7b8b929c476e649cbb116969a674d3923e5a4cddf8615ee5ba373761630f1a6397045d9ebe7eeaa87a3fffae3628aebc1ca4c7db5561b1c4513289
 _config_b2sum=81fafd3adcaf3b690d8d4791693e68c7ae921d103ebfd70e8d0ae15cd05ecde5e6672ae43c3a7875686d883c1f5b82d2c8b37b40aee8dcb0563913f9dd6469b6
-_cachy_base_patch_b2sum=38d1c42193033ce306d45ad4f8e3116fd1714ffdab1d5b2af94cd87d3b4078ca50fbdf56f155a60f86ddbace6824d1fa3c87e60e5b1b1bea1e9e14fc636841cf
+_cachy_base_patch_b2sum=84b3aea4df9b05f25b21ae51157f5897ad8698879ec7140ba96505ca2e559281d2588e71c0e7d8f15b8525188d58650a2eb53dce58f5780c90cc32d858046909
 _dkms_clang_patch_b2sum=c7294a689f70b2a44b0c4e9f00c61dbd59dd7063ecbe18655c4e7f12e21ed7c5bb4f5169f5aa8623b1c59de7b2667facb024913ecb9f4c650dabce4e8a7e5452
 
 
@@ -125,9 +125,9 @@ if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
     return 1 2>/dev/null || exit 1
 fi
 
-print_step "Step 1: Checking Ubuntu Noble System and usr-merge status"
-if ! lsb_release -cs | grep -q "noble"; then
-    print_warning "This script is optimized for Ubuntu Noble 24.04. Current system: $(lsb_release -cs)"
+print_step "Step 1: Checking Ubuntu Resolute System and usr-merge status"
+if ! lsb_release -cs | grep -q "resolute"; then
+    print_warning "This script is optimized for Ubuntu Resolute 26.04. Current system: $(lsb_release -cs)"
     read -p "Continue anyway? (y/N): " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -144,7 +144,7 @@ if [ -L "/lib" ] && [ "$(readlink -f /lib)" = "/usr/lib" ]; then
     print_info "/lib -> /usr/lib symlink detected"
 else
     print_warning "System appears to NOT be using merged-usr layout"
-    print_info "This is unusual for Ubuntu Noble. Modules will be installed to traditional /lib/modules"
+    print_info "This is unusual for Ubuntu Resolute. Modules will be installed to traditional /lib/modules"
     read -p "Continue anyway? (y/N): " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -153,13 +153,13 @@ else
 fi
 
 print_step "Step 2: Dependency Check"
-print_info "Checking for required packages in Ubuntu Noble and LLVM repositories..."
-print_info "In case you haven't got clang-21 already"
+print_info "Checking for required packages in Ubuntu Resolute and LLVM repositories..."
+print_info "In case you haven't got clang-22 already"
 print_info "wget https://apt.llvm.org/llvm.sh"
 print_info "chmod +x llvm.sh"
 print_info "sudo ./llvm.sh 21"
 
-# Ubuntu Noble package names (pending research)
+# Ubuntu Resolute package names (pending research)
 REQUIRED_PACKAGES=(
     "build-essential"      # bc, make, gcc
     "libncurses-dev"      # for menuconfig
@@ -181,7 +181,7 @@ REQUIRED_PACKAGES=(
     "dwarves"             # for something
 )
 
-# Add Rust packages for Ubuntu Noble
+# Add Rust packages for Ubuntu Resolute
 if [ "$_cpusched" != "rt" ] && [ "$_cpusched" != "rt-bore" ]; then
     REQUIRED_PACKAGES+=(
         "rustc"               # Rust compiler
@@ -193,10 +193,10 @@ fi
 # Add LLVM/Clang packages if using LTO
 if [[ "$_use_llvm_lto" == "thin" || "$_use_llvm_lto" == "full" || "$_use_llvm_lto" == "thin-dist" ]]; then
     REQUIRED_PACKAGES+=(
-        "clang-21"               # LLVM C compiler use 21 in Noble via llvm repos
-        "llvm-21"                # LLVM toolchain use 21 in Noble
-        "lld-21"                 # LLVM linker use 21 in Noble
-        "libclang-21-dev"        # for bindgen
+        "clang-22"               # LLVM C compiler use 22 in Resolute via llvm repos
+        "llvm-22"                # LLVM toolchain use 22 in Resolute
+        "lld-22"                 # LLVM linker use 22 in Resolute
+        "libclang-22-dev"        # for bindgen
     )
 fi
 
@@ -470,9 +470,9 @@ print_info "Applying configuration options..."
 BUILD_FLAGS=()
 if [[ "$_use_llvm_lto" == "thin" || "$_use_llvm_lto" == "full" || "$_use_llvm_lto" == "thin-dist" ]]; then
     BUILD_FLAGS=(
-        CC=clang-21
-        LD=ld.lld-21
-        LLVM=-21
+        CC=clang-22
+        LD=ld.lld-22
+        LLVM=-22
         LLVM_IAS=1
     )
     print_info "Using LLVM/Clang toolchain"
@@ -1185,17 +1185,15 @@ if [ -d /etc/kernel/postrm.d ]; then
 fi
 
 if [ "\$1" = purge ]; then
-    for extra_file in modules.dep modules.isapnpmap modules.pcimap \
-                      modules.usbmap modules.parportmap \
-                      modules.generic_string modules.ieee1394map \
-                      modules.ieee1394map modules.pnpbiosmap \
-                      modules.alias modules.ccwmap modules.inputmap \
-                      modules.symbols modules.ofmap \
-                      modules.seriomap modules.\*.bin \
-                      modules.softdep modules.weakdep modules.devname; do
-	eval rm -f /lib/modules/\$version/\$extra_file
-    done
-    rmdir /lib/modules/\$version || true
+        moddir="/lib/modules/\$version"
+          if [ -d "\$moddir" ]; then
+        # Safely delete everything inside the directory
+        find "\$moddir" -mindepth 1 -delete 2>/dev/null || {
+            echo "Warning: find failed, falling back to rm -rf" >&2
+            rm -rf "\$moddir"/*
+            }
+            # Try to remove the now-empty directory
+            rmdir "\$moddir" 2>/dev/null || true
 fi
 
 if [ "\$1" = remove ] || [ "\$1" = purge ]; then
@@ -1376,5 +1374,5 @@ echo
     print_info "To clean up build files later, run:"
     echo "rm -rf ${BUILD_DIR}/src"
 print_success "Build process completed successfully!"
-print_warning "Remember: Ubuntu Noble uses usr-merged filesystem - modules are in /usr/lib/modules!"
+print_warning "Remember: Ubuntu Resolute uses usr-merged filesystem - modules are in /usr/lib/modules!"
 print_info "The /lib/modules path still works due to the /lib -> /usr/lib symlink"
