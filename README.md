@@ -6,7 +6,7 @@
 
 ## 🛠️ Overview
 
-This script automates the process of building the Linux kernel on Ubuntu Noble (24.04 LTS), applying patches from **CachyOS**, and generating both:
+This script automates the process of building the Linux kernel on Ubuntu Resolute (26.04 LTS), applying patches from **CachyOS**, and generating both:
 
 - A `.deb` package for Debian and Ubuntu-based systems.
 - An *incomplete* Arch Linux package (work in progress).
@@ -18,7 +18,7 @@ The goal is to create a streamlined, reproducible kernel build pipeline tailored
 
 ## 📦 What You Get
 
-✅ `.deb` package compatible with Ubuntu Noble also tested on Debian Trixie and Testing (Forky)  
+✅ `.deb` package compatible with Ubuntu Resolute and Debian Forky
 ⚠️ Arch package — currently incomplete; will not install correctly  
 🔧 CachyOS patches applied  
 🔄 Automated build workflow using standard tools (`make`, `fakeroot`, `dpkg-deb`, etc.)  
@@ -72,7 +72,7 @@ CachyOS uses a highly optimized kernel configuration focused on performance. Thi
 
 This script is specifically designed for:
 
-- **Ubuntu Noble (24.04 LTS)** 
+- **Ubuntu Resolute (26.04 LTS)** 
 - Handling **modern merged-usr filesystem layout**
 - Users who may need to build kernels for both Debian/Ubuntu and Arch Linux systems (though Arch support is currently incomplete)
 
@@ -156,4 +156,4 @@ After successful build, you'll find:
 3. Keep your build environment clean and verified
 4. The script is experimental - use at your own risk
 
-Remember: Ubuntu Noble uses usr-merged filesystem - modules are in `/usr/lib/modules/` (accessed via `/lib/modules` symlink)
+Remember: Ubuntu Resolute uses usr-merged filesystem - modules are in `/usr/lib/modules/` (accessed via `/lib/modules` symlink)

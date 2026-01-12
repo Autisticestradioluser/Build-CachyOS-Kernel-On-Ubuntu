@@ -1,5 +1,5 @@
 #!/bin/bash
-# CachyOS style Kernel Build Script for Ubuntu Resolute 24.04 - USR-MERGE FIXED VERSION
+# CachyOS style Kernel Build Script for Ubuntu Resolute 26.04 - USR-MERGE FIXED VERSION
 # Properly handles modern Ubuntu's merged-usr filesystem structure
 
 set -e
@@ -23,7 +23,7 @@ _cachy_config=${_cachy_config:-yes}
 # CPU scheduler: bore, bmq, hardened, cachyos, eevdf, rt, rt-bore
 # bore is better for interactive apps but is an unfair scheduler which can introduce instability for VMs hosted with BORE on the host (BORE on VMs seems okay)
 # use EEVDF for VM hosts
-_cpusched=${_cpusched:-bmq}
+_cpusched=${_cpusched:-bore}
 # Tweak config with nconfig/xconfig
 _makenconfig=${_makenconfig:-no}
 _makexconfig=${_makexconfig:-no}
@@ -47,7 +47,7 @@ _preempt=${_preempt:-full}
 # Transparent Hugepages: always, madvise
 _hugepage=${_hugepage:-always}
 # CPU optimization: native, zen4, generic_v[1-4]
-_processor_opt=${_processor_opt:-generic_v3}
+_processor_opt=${_processor_opt:-native}
 # LLVM LTO: none, thin, full, thin-dist
 # use zram-generator and make a zstd zram device with zram = ram * 4 if you have at least 8 GB RAM to build with full LTO
 _use_llvm_lto=${_use_llvm_lto:-full}
@@ -100,7 +100,7 @@ _nv_pkg="NVIDIA-Linux-x86_64-${_nv_ver}"
 _nv_open_ver=590.48.01
 _nv_open_pkg="NVIDIA-kernel-module-source-${_nv_open_ver}"
 
-# b2sums, expected to change with each release, current 6.18.3 b2sums
+# b2sums, expected to change with each release, current 6.18.5 b2sums
 _kernel_b2sum=9294ae977d7b8b929c476e649cbb116969a674d3923e5a4cddf8615ee5ba373761630f1a6397045d9ebe7eeaa87a3fffae3628aebc1ca4c7db5561b1c4513289
 _config_b2sum=81fafd3adcaf3b690d8d4791693e68c7ae921d103ebfd70e8d0ae15cd05ecde5e6672ae43c3a7875686d883c1f5b82d2c8b37b40aee8dcb0563913f9dd6469b6
 _cachy_base_patch_b2sum=84b3aea4df9b05f25b21ae51157f5897ad8698879ec7140ba96505ca2e559281d2588e71c0e7d8f15b8525188d58650a2eb53dce58f5780c90cc32d858046909
