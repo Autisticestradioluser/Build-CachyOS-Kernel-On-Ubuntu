@@ -1194,6 +1194,7 @@ if [ "\$1" = purge ]; then
             }
             # Try to remove the now-empty directory
             rmdir "\$moddir" 2>/dev/null || true
+            fi
 fi
 
 if [ "\$1" = remove ] || [ "\$1" = purge ]; then
