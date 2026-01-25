@@ -22,7 +22,7 @@ print_step() { echo -e "\n${GREEN}==>${NC} ${YELLOW}$1${NC}"; }
 _cachy_config=${_cachy_config:-yes}
 # CPU scheduler: bore, bmq, hardened, cachyos, eevdf, rt, rt-bore
 # bore is better for interactive apps but is an unfair scheduler which can introduce instability for VMs hosted with BORE on the host (BORE on VMs seems okay)
-# use EEVDF for VM hosts
+# use EEVDF or maybe BMQ for VM hosts
 _cpusched=${_cpusched:-bore}
 # Tweak config with nconfig/xconfig
 _makenconfig=${_makenconfig:-no}
@@ -37,7 +37,7 @@ _cc_harder=${_cc_harder:-yes}
 # Default performance governor
 _per_gov=${_per_gov:-yes}
 # Enable TCP_CONG_BBR3 for bbrv3
-_tcp_bbr3=${_tcp_bbr3:-yes}
+_tcp_bbr3=${_tcp_bbr3:-no}
 # 100, 250, 300, 500, 600, 750, 1000
 _HZ_ticks=${_HZ_ticks:-1000}
 # periodic, idle, full
@@ -83,7 +83,7 @@ _build_deb=${_build_deb:-yes}
 
 # Kernel version info
 _major=6.18
-_minor=5
+_minor=7
 #_rcver=rc7
 pkgver=${_major}.${_minor}
 #pkgver=${_major}.${_rcver}
@@ -94,16 +94,17 @@ _srcname=linux-${_stable}
 # Put a verison in here that is higher than your previous one
 pkgrel=1
 
-# NVIDIA driver version, 580.119.02 is latest for maxwell-pascal vs 590.44.01 beta is turing+ but nvidia-open is better for that while maxwell-pascal need 580-series proprietary drivers
-_nv_ver=580.119.02
+# NVIDIA driver version, 580.129.09 is latest for maxwell-pascal vs 590.44.01 beta is turing+ but nvidia-open is better for that while maxwell-pascal need 580-series proprietary drivers
+# Currently broken
+_nv_ver=580.126.09
 _nv_pkg="NVIDIA-Linux-x86_64-${_nv_ver}"
 _nv_open_ver=590.48.01
 _nv_open_pkg="NVIDIA-kernel-module-source-${_nv_open_ver}"
 
 # b2sums, expected to change with each release, current 6.18.5 b2sums
-_kernel_b2sum=9294ae977d7b8b929c476e649cbb116969a674d3923e5a4cddf8615ee5ba373761630f1a6397045d9ebe7eeaa87a3fffae3628aebc1ca4c7db5561b1c4513289
+_kernel_b2sum=3ad31b9b36ea2c8f865c87e63c97a4e7b6684abee35ae71d5838026de9f476edb4c847adab315235293c5f37f8f3b90799ae2b3d41915716710eae63acbf6863
 _config_b2sum=81fafd3adcaf3b690d8d4791693e68c7ae921d103ebfd70e8d0ae15cd05ecde5e6672ae43c3a7875686d883c1f5b82d2c8b37b40aee8dcb0563913f9dd6469b6
-_cachy_base_patch_b2sum=84b3aea4df9b05f25b21ae51157f5897ad8698879ec7140ba96505ca2e559281d2588e71c0e7d8f15b8525188d58650a2eb53dce58f5780c90cc32d858046909
+_cachy_base_patch_b2sum=80b13ad1f6a5cf2f9f28ab9d66a3e7e8171f8ba972d937d0d11a6e218d3642e4b9cae665b787b0aae8376b94a0c6fdcf9f5b8e1d81008fb7283588cc942c34e9
 _dkms_clang_patch_b2sum=c7294a689f70b2a44b0c4e9f00c61dbd59dd7063ecbe18655c4e7f12e21ed7c5bb4f5169f5aa8623b1c59de7b2667facb024913ecb9f4c650dabce4e8a7e5452
 
 
