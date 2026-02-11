@@ -23,7 +23,7 @@ _cachy_config=${_cachy_config:-yes}
 # CPU scheduler: bore, bmq, hardened, cachyos, eevdf, rt, rt-bore
 # bore is better for interactive apps but is an unfair scheduler which can introduce instability for VMs hosted with BORE on the host (BORE on VMs seems okay)
 # use EEVDF or maybe BMQ for VM hosts
-_cpusched=${_cpusched:-bore}
+_cpusched=${_cpusched:-bmq}
 # Tweak config with nconfig/xconfig
 _makenconfig=${_makenconfig:-no}
 _makexconfig=${_makexconfig:-no}
@@ -37,7 +37,7 @@ _cc_harder=${_cc_harder:-yes}
 # Default performance governor
 _per_gov=${_per_gov:-yes}
 # Enable TCP_CONG_BBR3 for bbrv3
-_tcp_bbr3=${_tcp_bbr3:-no}
+_tcp_bbr3=${_tcp_bbr3:-yes}
 # 100, 250, 300, 500, 600, 750, 1000
 _HZ_ticks=${_HZ_ticks:-1000}
 # periodic, idle, full
@@ -68,7 +68,7 @@ _build_nvidia_open=${_build_nvidia_open:-no}
 # Build open NVIDIA module (Turing+) but no kernel headers
 _build_nvidia_open_min=${_build_nvidia_open_min:-no}
 # build with headers (without requiring nvidia)
-_build_debug=${_build_debug:-no}
+_build_debug=${_build_debug:-yes}
 # AutoFDO
 _autofdo=${_autofdo:-no}
 _autofdo_profile_name=${_autofdo_profile_name:-}
@@ -82,14 +82,14 @@ _build_mkinitcpiod_preset=${_build_mkinitcpiod_preset:-yes}
 _build_deb=${_build_deb:-yes}
 
 # Kernel version info
-_major=6.18
-_minor=7
+_major=6.19
+_minor=0
 #_rcver=rc7
 pkgver=${_major}.${_minor}
 #pkgver=${_major}.${_rcver}
 #_stable=${_major}-${_rcver}
-#_stable=${_major}
-_stable=${_major}.${_minor}
+_stable=${_major}
+#_stable=${_major}.${_minor}
 _srcname=linux-${_stable}
 # Put a verison in here that is higher than your previous one
 pkgrel=1
@@ -101,11 +101,11 @@ _nv_pkg="NVIDIA-Linux-x86_64-${_nv_ver}"
 _nv_open_ver=590.48.01
 _nv_open_pkg="NVIDIA-kernel-module-source-${_nv_open_ver}"
 
-# b2sums, expected to change with each release, current 6.18.5 b2sums
-_kernel_b2sum=3ad31b9b36ea2c8f865c87e63c97a4e7b6684abee35ae71d5838026de9f476edb4c847adab315235293c5f37f8f3b90799ae2b3d41915716710eae63acbf6863
-_config_b2sum=81fafd3adcaf3b690d8d4791693e68c7ae921d103ebfd70e8d0ae15cd05ecde5e6672ae43c3a7875686d883c1f5b82d2c8b37b40aee8dcb0563913f9dd6469b6
-_cachy_base_patch_b2sum=80b13ad1f6a5cf2f9f28ab9d66a3e7e8171f8ba972d937d0d11a6e218d3642e4b9cae665b787b0aae8376b94a0c6fdcf9f5b8e1d81008fb7283588cc942c34e9
-_dkms_clang_patch_b2sum=c7294a689f70b2a44b0c4e9f00c61dbd59dd7063ecbe18655c4e7f12e21ed7c5bb4f5169f5aa8623b1c59de7b2667facb024913ecb9f4c650dabce4e8a7e5452
+# b2sums, expected to change with each release, current 6.19.0 b2sums
+_kernel_b2sum=d1551c058e9a1201a0fa769b427255f13bb0d73fdd384e2c0302956cc9a1eeba255b013fa87a15fdad508bc00fdae2085590572c76cfe20fe2af31ba87b7d289
+_config_b2sum=823b738621a81fa74ed94795004c19ca9e3a17c77ba18f7d83ac3801c2688725c3d8576c83cee99d42e178b95f54c8b4932b321cb15c8209ea965d914600b488
+_cachy_base_patch_b2sum=329acf47c6a13f4a7cd820544dfe15bb4293244a1cccb48e1809ffe99ecd9656848befc0c9f3e4a4429e7476412f45027b7c2dbfbeccd403ac884c450903bc3d
+_dkms_clang_patch_b2sum=ea26c88950fc06b6ffab93b30e3beacc7d26571a70262334ca8b001dc7899bf96b47d703fbaa7f4e47765c3dafccc23c58a4d4da2169b8ee50012afcb7a1dd96
 
 
 # Patches source
