@@ -75,7 +75,7 @@ _autofdo_profile_name=${_autofdo_profile_name:-}
 # Propeller
 _propeller=${_propeller:-no}
 _propeller_profiles=${_propeller_profiles:-no}
-_build_r8125=${_build_r8125:-no}
+_build_r8125=${_build_r8125:-yes}
 # build mkinitcpio.d preset for arch users, valid opts: 'no', 'yes', 'ext': yes (included in package for distros that use mkinitcpio such as Arch), or 'ext' external (placed inside build dir where the resulting .tar.zst for kernel will be so you can use it on Arch too)
 # WORK IN PROGRESS: 'yes' here should build you a package to install on Arch, but we don't currently make metadata to do this
 _build_mkinitcpiod_preset=${_build_mkinitcpiod_preset:-yes}
@@ -106,7 +106,7 @@ _nv_open_pkg="NVIDIA-kernel-module-source-${_nv_open_ver}"
 _kernel_b2sum=cbd50ebd08bd10ac95397b61757a330bf670ab32949350e8ed69d82f1b663b37315e31e289b8eb2fea23be9f19c79c2e3b90beadd9349a1c1f8cb0644a699367
 _config_b2sum=3c42413a19aa5c51d25c1dd414d21a2cd9fe9dbc904ad8679927a8dd1c733e0d62e2f74290c02faae3f04eac70a4e3caff0870b65c44647f3f523ee8d187b18f
 _cachy_base_patch_b2sum=8b65a9bc99ba9578a2ada61b036b0f78fa49152c726145a30159ec21de46be5c22697c37fb00c874b25648ead309ad08ffb071ec3d237ab1024ec01e34e0ceba
-_dkms_clang_patch_b2sum=226c64dd989ec0c4c444d048707e5d56be4a7ffa59ada31f197015c65a87e7935c8a0a1d6a9d35947e60f90505e5cffb3df9824aec71b2f188bcaa2e89403e0b
+_dkms_clang_patch_b2sum=ea26c88950fc06b6ffab93b30e3beacc7d26571a70262334ca8b001dc7899bf96b47d703fbaa7f4e47765c3dafccc23c58a4d4da2169b8ee50012afcb7a1dd96
 
 
 # Patches source
@@ -421,6 +421,7 @@ if [ "$_build_r8125" = "yes" ]; then
 	print_info "Cloning r8125 repository..."
 	if [ ! -d "${SRC_DIR}/r8125" ]; then
 	git clone --depth=1 https://github.com/aravance/r8125.git "${SRC_DIR}/r8125"
+	fi
 fi
 
 print_step "Step 5: Extracting and Preparing Sources"
@@ -748,7 +749,7 @@ if [ "$_build_r8125" = "yes" ]; then
 	make "${BUILD_FLAGS[@]}" KERNELDIR="${SRC_DIR}/${_srcname}" modules
 	cd "${SRC_DIR}/${_srcname}"
 fi
-	
+
 print_step "Step 9: Preparing Installation Archive - USR-MERGE AWARE VERSION"
 print_info "Creating installation directory structure..."
 
@@ -1187,14 +1188,14 @@ if [ -f /etc/modprobe.d/disable-nouveau-for-nvidia.conf ]; then
 	rm -f /etc/modprobe.d/disable-nouveau-for-nvidia.conf
 fi
 EOF
-fi	
+fi
 if [ "$_build_r8125" = "yes" ]; then
 	cat >> "${deb_dir}/DEBIAN/prerm" << 'EOF'
 	if [ -f /etc/modprobe.d/disable-r8169-for-r8125.conf ]; then
 	rm -rf /etc/modprobe.d/disable-r8169-for-r8125.conf
 	fi
 EOF
-
+fi
 	cat >> "${deb_dir}/DEBIAN/prerm" << 'EOF'
 	exit 0
 EOF
