@@ -827,7 +827,7 @@ fi
 # Install ZFS modules if built
 if [ "$_build_zfs" = "yes" ]; then
 	print_info "Installing ZFS modules..."
-	ZFS_DIR="${MODULES_BASE_DIR}/${KERNEL_VERSION}/extra"
+	ZFS_DIR="${MODULES_BASE_DIR}/${KERNEL_VERSION}/kernel/extra"
 	mkdir -p "${ZFS_DIR}"
 	find "${SRC_DIR}/zfs/module" -name "*.ko" -exec cp {} "${ZFS_DIR}/" \;
 	sign_modules "${ZFS_DIR}"
@@ -836,10 +836,10 @@ fi
 # Install r8125 modules if built
 if [ "$_build_r8125" = "yes" ]; then
 	print_info "Installing r8125 module"
-	r8125_DIR=="${MODULES_BASE_DIR}/${KERNEL_VERSION}/extra"
+	r8125_DIR="${MODULES_BASE_DIR}/${KERNEL_VERSION}/kernel/extra"
 	mkdir -p "${r8125_DIR}"
-	find "${SRC_DIR}/r8125" -name "*.ko" -exec cp {} "$r8125_DIR/" \;
-	sign_modules"${r8125_DIR}"
+	cp "${SRC_DIR}/r8125/src"/*.ko "$r8125_DIR/"
+	sign_modules "${r8125_DIR}"
 fi
 
 # Compress all modules with zstd (matching Ubuntu's expected format)
