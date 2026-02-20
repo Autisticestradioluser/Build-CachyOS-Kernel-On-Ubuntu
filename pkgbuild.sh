@@ -75,7 +75,8 @@ _autofdo_profile_name=${_autofdo_profile_name:-}
 # Propeller
 _propeller=${_propeller:-no}
 _propeller_profiles=${_propeller_profiles:-no}
-_build_r8125=${_build_r8125:-yes}
+# Build r8125 module
+_build_r8125=${_build_r8125:yes}
 # build mkinitcpio.d preset for arch users, valid opts: 'no', 'yes', 'ext': yes (included in package for distros that use mkinitcpio such as Arch), or 'ext' external (placed inside build dir where the resulting .tar.zst for kernel will be so you can use it on Arch too)
 # WORK IN PROGRESS: 'yes' here should build you a package to install on Arch, but we don't currently make metadata to do this
 _build_mkinitcpiod_preset=${_build_mkinitcpiod_preset:-yes}
@@ -84,7 +85,7 @@ _build_deb=${_build_deb:-yes}
 
 # Kernel version info
 _major=6.19
-_minor=2
+_minor=3
 #_rcver=rc7
 pkgver=${_major}.${_minor}
 #pkgver=${_major}.${_rcver}
@@ -103,9 +104,9 @@ _nv_open_ver=590.48.01
 _nv_open_pkg="NVIDIA-kernel-module-source-${_nv_open_ver}"
 
 # b2sums, expected to change with each release, current 6.19.2 b2sums
-_kernel_b2sum=cbd50ebd08bd10ac95397b61757a330bf670ab32949350e8ed69d82f1b663b37315e31e289b8eb2fea23be9f19c79c2e3b90beadd9349a1c1f8cb0644a699367
+_kernel_b2sum=a6026d06097726bfafc19c83c94949c15bee5578bb7a872612a13a9ddbbdc871e18395832da27350aa476ba947c7e8904b1161c455b8bdf4a5fe9127c32c6818
 _config_b2sum=3c42413a19aa5c51d25c1dd414d21a2cd9fe9dbc904ad8679927a8dd1c733e0d62e2f74290c02faae3f04eac70a4e3caff0870b65c44647f3f523ee8d187b18f
-_cachy_base_patch_b2sum=8b65a9bc99ba9578a2ada61b036b0f78fa49152c726145a30159ec21de46be5c22697c37fb00c874b25648ead309ad08ffb071ec3d237ab1024ec01e34e0ceba
+_cachy_base_patch_b2sum=d2ff199e5bbc87379f44738058ffa16290077f89bf5d4f5a91e6b4df9b88fdeeae7492e15fd0bec1356a3d5280384fb872f1a637070eb6e49a3bca57658667b3
 _dkms_clang_patch_b2sum=ea26c88950fc06b6ffab93b30e3beacc7d26571a70262334ca8b001dc7899bf96b47d703fbaa7f4e47765c3dafccc23c58a4d4da2169b8ee50012afcb7a1dd96
 
 
