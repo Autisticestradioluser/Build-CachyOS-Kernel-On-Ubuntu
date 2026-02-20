@@ -1023,8 +1023,9 @@ Maintainer: GitHub User
 Architecture: ${arch}
 Pre-Depends: initramfs-tools (>= 0.125)
 Depends: linux-base (>= 4.0~)
+kernel: ${KERNEL_VERSION}
 Description: CachyOS Linux kernel built by a user for Debian or Ubuntu
-kernel ${KERNEL_VERSION}
+
 EOF
 
 	# Add specific notes for NVIDIA types
