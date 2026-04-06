@@ -85,16 +85,18 @@ _build_deb=${_build_deb:-yes}
 
 # Kernel version info
 _major=6.19
-_minor=3
+_minor=11
+_tagrel=2
 #_rcver=rc7
 pkgver=${_major}.${_minor}
 #pkgver=${_major}.${_rcver}
 #_stable=${_major}-${_rcver}
 #_stable=${_major}
 _stable=${_major}.${_minor}
-_srcname=linux-${_stable}
 # Put a verison in here that is higher than your previous one
 pkgrel=1
+_srcver=${_major}.${_minor}-${_tagrel}
+_srcname=cachyos-${_srcver}
 
 # NVIDIA driver version, 580.129.09 is latest for maxwell-pascal vs 590.48.01 is turing+ but nvidia-open is better for that while maxwell-pascal need 580-series proprietary drivers
 # Currently broken
@@ -103,11 +105,9 @@ _nv_pkg="NVIDIA-Linux-x86_64-${_nv_ver}"
 _nv_open_ver=590.48.01
 _nv_open_pkg="NVIDIA-kernel-module-source-${_nv_open_ver}"
 
-# b2sums, expected to change with each release, current 6.19.3 b2sums
-_kernel_b2sum=a6026d06097726bfafc19c83c94949c15bee5578bb7a872612a13a9ddbbdc871e18395832da27350aa476ba947c7e8904b1161c455b8bdf4a5fe9127c32c6818
-_config_b2sum=3c42413a19aa5c51d25c1dd414d21a2cd9fe9dbc904ad8679927a8dd1c733e0d62e2f74290c02faae3f04eac70a4e3caff0870b65c44647f3f523ee8d187b18f
-_cachy_base_patch_b2sum=d2ff199e5bbc87379f44738058ffa16290077f89bf5d4f5a91e6b4df9b88fdeeae7492e15fd0bec1356a3d5280384fb872f1a637070eb6e49a3bca57658667b3
-_dkms_clang_patch_b2sum=ea26c88950fc06b6ffab93b30e3beacc7d26571a70262334ca8b001dc7899bf96b47d703fbaa7f4e47765c3dafccc23c58a4d4da2169b8ee50012afcb7a1dd96
+# b2sums, expected to change with each release, current 6.19.11 b2sums
+_kernel_b2sum=b38be031a72888d32ffd1c95ac36417836e373e95d7f86d33d9e32f4583b4acc86de19c6e62294a1836d8ebb8410e27c714b5580f2101b4b0e88ba2d9eecb13b
+_config_b2sum=c5a9e9c21351a31201f790a6c2389938e593d9228043aa031897537d3da17a149886acb2de73fbb7c1e8ffecfd71bf548ca800ee87b02ca306b92bf38a4e74a8
 
 
 # Patches source
@@ -261,20 +261,11 @@ mkdir -p "${DOWNLOAD_DIR}"
 cd "${BUILD_DIR}"
 
 print_step "Step 4: Downloading Kernel Sources and Patches"
-print_info "Downloading Linux kernel ${_stable}..."
-	if [[ -n "$_rcver" || "$_minor" = "0" ]]; then
-		if [ ! -f "${DOWNLOAD_DIR}/v${_stable}.tar.gz" ]; then
+print_info "Downloading Linux kernel ${_stable} with CachyOS patches..."
+		if [ ! -f "${DOWNLOAD_DIR}/cachyos-${_srcver}.tar.gz" ]; then
 		print_info "Downloading a kernel from github"
-		wget -P "${DOWNLOAD_DIR}" "https://github.com/torvalds/linux/archive/refs/tags/v${_stable}.tar.gz"
-		else
-		print_info "Kernel source already downloaded"
-		fi
-	fi
-	if [[ "$_minor" -gt 0 ]]; then
-		if [ ! -f "${DOWNLOAD_DIR}/${_srcname}.tar.xz" ]; then
-		print_info "Downloading a stable kernel from the Linux Foundation CDN"
-		wget -P "${DOWNLOAD_DIR}" "https://cdn.kernel.org/pub/linux/kernel/v${pkgver%%.*}.x/${_srcname}.tar.xz"
-		if [[ "$(b2sum ${DOWNLOAD_DIR}/${_srcname}.tar.xz | cut -d' ' -f1)" == $_kernel_b2sum ]]; then
+		wget -P "${DOWNLOAD_DIR}" "https://github.com/CachyOS/linux/releases/download/cachyos-${_srcver}/cachyos-${_srcver}.tar.gz"
+		if [[ "$(b2sum ${DOWNLOAD_DIR}/cachyos-${_srcver}.tar.gz | cut -d' ' -f1)" == $_kernel_b2sum ]]; then
 		echo "✅  Kernel b2sum matches"
 		else
 		echo "❌  Kernel b2sum mismatch"
@@ -282,14 +273,14 @@ print_info "Downloading Linux kernel ${_stable}..."
 		fi
 		else
 		print_info "Kernel source already downloaded"
-		if [[ "$(b2sum ${DOWNLOAD_DIR}/${_srcname}.tar.xz | cut -d' ' -f1)" == $_kernel_b2sum ]]; then
+		if [[ "$(b2sum ${DOWNLOAD_DIR}/cachyos-${_srcver}.tar.gz | cut -d' ' -f1)" == $_kernel_b2sum ]]; then
 		echo "✅  Kernel b2sum matches"
 		else
 		echo "❌  Kernel b2sum mismatch"
 		exit 1
 		fi
 	fi
-fi
+
 
 # Check and download CachyOS config
 if [ ! -f "${DOWNLOAD_DIR}/config" ]; then
@@ -307,26 +298,6 @@ if [ ! -f "${DOWNLOAD_DIR}/config" ]; then
 		echo "✅  Config b2sum matches"
 		else
 		echo "❌  Config b2sum mismatch"
-		exit 1
-		fi
-fi
-
-# Check and download CachyOS base patches
-if [ ! -f "${DOWNLOAD_DIR}/0001-cachyos-base-all.patch" ]; then
-	print_info "Downloading CachyOS base patches..."
-	wget -P "${DOWNLOAD_DIR}" "${_patchsource}/all/0001-cachyos-base-all.patch"
-		if [[ "$(b2sum ${DOWNLOAD_DIR}/0001-cachyos-base-all.patch | cut -d' ' -f1)" == $_cachy_base_patch_b2sum ]]; then
-		echo "✅  CachyOS base patch b2sum matches"
-		else
-		echo "❌  CachyOS base patch b2sum mismatch"
-		exit 1
-		fi
-	else
-	echo "Already download CachyOS base patch"
-		if [[ "$(b2sum ${DOWNLOAD_DIR}/0001-cachyos-base-all.patch | cut -d' ' -f1)" == $_cachy_base_patch_b2sum ]]; then
-		echo "✅  CachyOS base patch b2sum matches"
-		else
-		echo "❌  CachyOS base patch b2sum mismatch"
 		exit 1
 		fi
 fi
@@ -361,20 +332,8 @@ if [[ "$_use_llvm_lto" == "thin" || "$_use_llvm_lto" == "full" || "$_use_llvm_lt
 	if [ ! -f "${DOWNLOAD_DIR}/dkms-clang.patch" ]; then
 		print_info "Downloading LLVM DKMS patch..."
 		wget -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/dkms-clang.patch"
-		if [[ "$(b2sum ${DOWNLOAD_DIR}/dkms-clang.patch | cut -d' ' -f1)" == $_dkms_clang_patch_b2sum ]]; then
-		echo "✅  dkms clang patch b2sum matches"
-		else
-		echo "❌  dkms clang patch b2sum mismatch"
-		exit 1
-		fi
 	else
 	echo "Already downloaded dkms clang patch"
-		if [[ "$(b2sum ${DOWNLOAD_DIR}/dkms-clang.patch | cut -d' ' -f1)" == $_dkms_clang_patch_b2sum ]]; then
-		echo "✅  dkms clang patch b2sum matches"
-		else
-		echo "❌  dkms clang patch b2sum mismatch"
-		exit 1
-		fi
 	fi
 fi
 
@@ -428,11 +387,7 @@ fi
 print_step "Step 5: Extracting and Preparing Sources"
 print_info "Extracting kernel source..."
 cd "${SRC_DIR}"
-if [[ -n "$_rcver" || "$_minor" -eq 0 ]]; then
-	tar -xf "${DOWNLOAD_DIR}/v${_stable}.tar.gz"
-else
-	tar -xf "${DOWNLOAD_DIR}/linux-${_stable}.tar.xz"
-fi
+	tar -xf "${DOWNLOAD_DIR}/cachyos-${_srcver}.tar.gz"
 cd "${_srcname}"
 
 print_info "Setting kernel version..."
@@ -440,8 +395,6 @@ echo "-$pkgrel" > localversion.10-pkgrel
 echo "-cachyos" > localversion.20-pkgname
 
 print_step "Step 6: Applying Patches"
-print_info "Applying CachyOS base patches..."
-patch -Np1 < "${DOWNLOAD_DIR}/0001-cachyos-base-all.patch"
 
 # Apply DKMS clang patch if using LTO
 if [[ "$_use_llvm_lto" == "thin" || "$_use_llvm_lto" == "full" || "$_use_llvm_lto" == "thin-dist" ]]; then
@@ -674,7 +627,6 @@ if [[ "$_build_nvidia" == "yes" || "$_build_nvidia_min" == "yes" ]]; then
 	patch -Np1 -i "${DOWNLOAD_DIR}/0001-Enable-atomic-kernel-modesetting-by-default.patch"
 	cd "${SRC_DIR}/${_srcname}"
 fi
-
 if [[ "$_build_nvidia_open" == "yes" || "$_build_nvidia_open_min" == "yes" ]]; then
 	print_info "Extracting and patching NVIDIA open driver..."
 	cd "${SRC_DIR}"
@@ -1024,15 +976,13 @@ Maintainer: GitHub User
 Architecture: ${arch}
 Pre-Depends: initramfs-tools (>= 0.125)
 Depends: linux-base (>= 4.0~)
-kernel: ${KERNEL_VERSION}
 Description: CachyOS Linux kernel built by a user for Debian or Ubuntu
-
 EOF
 
 	# Add specific notes for NVIDIA types
 	if [ -n "${nvidia_suffix}" ] || [ -n "${nvidia_open_suffix}" ]; then
 		cat >> "${deb_dir}/DEBIAN/control" << EOF
-Note: This package includes NVIDIA driver ${nvidia_version} which is pre-built
+ Note: This package includes NVIDIA driver ${nvidia_version} which is pre-built
 against the Linux kernel with CachOS patches and has been optimized for gaming. The NVIDIA
 modules are fully integrated with the kernel, avoiding the need for
 separate driver installation. If you have trouble with your graphics after installing this, run: sudo rm /etc/modprobe.d/disable-nouveau-for-nvidia.conf
@@ -1041,7 +991,7 @@ EOF
 # Add note about r8125 if built
 	if [ "$_build_r8125" = "yes" ]; then
 		cat >> "${deb_dir}/DEBIAN/control" << EOF
-Note: This package includes the r8125 module and blacklists r8169
+ Note: This package includes the r8125 module and blacklists r8169
 EOF
 	fi
 	local version="${KERNEL_VERSION}"
@@ -1424,3 +1374,4 @@ echo
 print_success "Build process completed successfully!"
 print_warning "Remember: Ubuntu Noble uses usr-merged filesystem - modules are in /usr/lib/modules!"
 print_info "The /lib/modules path still works due to the /lib -> /usr/lib symlink"
+
