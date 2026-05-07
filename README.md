@@ -38,7 +38,7 @@ Packages are placed in the build directory after successful compilation.
 ## ⚙️ Configuration
 All options use the `_` prefix and can be overridden at runtime via environment variables without editing the script.
 
-**Syntax:** `_var=value ./NobleKernelBuild-stable.sh`
+**Syntax:** `_var=value ./pkgbuild.sh`
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -57,7 +57,7 @@ All options use the `_` prefix and can be overridden at runtime via environment 
 | `_tcp_bbr3` | `yes` | Enable BBRv3 TCP congestion control |
 | `_tickrate` | `full` | Tick type: `periodic`, `idle`, `full` |
 
-📖 See the top of `NobleKernelBuild-stable.sh` for the complete variable list and inline documentation.
+📖 See the top of `pkgbuild.sh` for the complete variable list and inline documentation.
 
 ## 🛠️ Requirements & Setup
 ### System
@@ -77,8 +77,8 @@ python3 perl zstd wget curl git pkg-config kmod fakeroot dwarves bc dpkg-dev lib
 
 ### Execution
 ```bash
-chmod +x NobleKernelBuild-stable.sh
-./NobleKernelBuild-stable.sh
+chmod +x pkgbuild.sh
+./pkgbuild.sh
 ```
 The script will:
 1. Validate OS, usr-merge status, and dependencies
