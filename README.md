@@ -1,62 +1,45 @@
-# Linux Kernel Builder for Ubuntu with CachyOS Patches
+# Linux Kernel Builder for Ubuntu Noble with CachyOS Patches
 
-⚠️ **WARNING:** This is a custom, experimental build script. It automates advanced kernel compilation and packaging. Use at your own risk. **ONLY report issues to this repository.**
+A deterministic, single-run build script that compiles the Linux kernel with CachyOS patches and outputs **fully installable packages for both Debian/Ubuntu and Arch Linux**.
 
-## 🛠️ Overview
-This script automates the process of building the Linux kernel on **Ubuntu Noble (24.04 LTS)**, applying performance patches from CachyOS, and generating **fully installable packages for both Debian/Ubuntu and Arch Linux** from a single build run.
-
-It is designed for users who want CachyOS-level kernel optimizations on Debian-based systems, or who maintain dual-boot/multi-distro setups and want to compile once and deploy everywhere.
-
-## 📦 What You Get
-✅ **Debian/Ubuntu `.deb` packages** (`linux-image` + optional `linux-headers`)  
-✅ **Arch Linux `.pkg.tar.zst` packages** (`linux-cachyos-*` + optional `-headers`)  
-✅ **Proper package manager compatibility** (`dpkg -i` and `pacman -U` ready)  
-✅ **CachyOS patches & optimizations** applied automatically  
-✅ **Dynamic package descriptions** reflecting your exact build flags  
-✅ **Automated `initramfs`, `depmod`, and GRUB updates** via maintainer scripts  
-✅ **Usr-merge aware** staging and packaging (handles `/lib -> /usr/lib` seamlessly)
-
-## 🎯 Target Environment
+## 🎯 Scope & Behavior
 - **Host OS:** Ubuntu Noble 24.04 LTS (optimized & validated)
 - **Architecture:** `x86_64` / `amd64`
-- **Filesystem:** Fully supports modern merged-usr (`/lib -> /usr/lib`) and traditional layouts
-- **Toolchain:** GCC or Clang/LLVM (LTO supported), `fakeroot`, `dpkg-deb`, `bsdtar`
+- **Filesystem:** Fully supports merged-usr (`/lib -> /usr/lib`) and traditional layouts
+- **Output:** Split `linux-image` + `linux-headers` packages for both `.deb` and `.pkg.tar.zst` formats
+- **Execution:** Runs once, stages artifacts, packages both formats simultaneously, exits cleanly
 
-## ⚙️ Key Features
-- **Dual Package Output:** Generates both `.deb` and `.pkg.tar.zst` in one run
-- **Split Packages:** Kernel/image and headers are packaged separately (controlled by `_build_debug`)
-- **Full Configurability:** Every build option can be overridden via environment variables without editing the script
-- **Pacman-Compliant Arch Packages:** Proper `.PKGINFO`, `.BUILDINFO`, `.MTREE`, sanitized `pkgver`, and `mkinitcpio` preset included
-- **Debian-Policy Compliant:** Robust `postinst`/`prerm`/`postrm` scripts, safe `initramfs`/GRUB handling, and `linux-update-symlinks` integration
-- **Automatic Fakeroot Handling:** Restarts under `fakeroot` safely if needed, with permission normalization
-- **Source Integrity Verification:** `b2sum` validation for kernel tarball, config, and patches before build begins
+## ✅ Verified Features
+| Feature | Status | Implementation |
+|---------|--------|----------------|
+| CachyOS patch integration | ✅ Active | Downloads & applies scheduler, RT, hardened, and DKMS-clang patches from upstream |
+| Dual package output | ✅ Active | Generates `.deb` and `.pkg.tar.zst` in one build run |
+| Split image/headers | ✅ Active | Controlled by `_build_debug=yes`. Headers packaged separately with correct `/lib/modules/$ver/build` symlinks |
+| Pacman compliance | ✅ Active | `.PKGINFO`, `.BUILDINFO`, `.MTREE`, sanitized `pkgver` (dots in version, hyphen before pkgrel) |
+| Debian policy compliance | ✅ Active | `postinst`/`prerm`/`postrm` follow kernel packaging standards; safe `initramfs`/GRUB handling |
+| Source integrity verification | ✅ Active | `b2sum` validation for kernel tarball and base config before extraction |
+| Module signing | ✅ Conditional | Runs automatically if `CONFIG_MODULE_SIG=y` is present in the kernel config |
+| Fakeroot handling | ✅ Active | Auto-detects, fixes permissions, and restarts under `fakeroot` if needed |
+| r8125 driver integration | ✅ Active | Builds, packages, and auto-blacklists `r8169` via maintainer scripts |
+| ZFS module support | ✅ Conditional | Builds when `_build_zfs=yes`. Incompatible with `rt`/`rt-bore` schedulers (enforced by script) |
 
 ## 📦 Package Output & Installation
-After a successful build, packages are placed in the build directory:
+Packages are placed in the build directory after successful compilation.
 
-| Package Type | Filename Pattern | Install Command |
-|--------------|------------------|-----------------|
-| **Arch Image** | `linux-cachyos-<sched>-<ver>.<ver>.<ver>-<pkgrel>-x86_64.pkg.tar.zst` | `sudo pacman -U linux-cachyos-*.pkg.tar.zst` |
-| **Arch Headers** | `linux-cachyos-<sched>-headers-<ver>.<ver>.<ver>-<pkgrel>-x86_64.pkg.tar.zst` | `sudo pacman -U linux-cachyos-*-headers-*.pkg.tar.zst` |
-| **Debian Image** | `linux-image-cachyos-<sched>_<ver>-<pkgrel>_amd64.deb` | `sudo dpkg -i linux-image-cachyos-*.deb` |
-| **Debian Headers** | `linux-headers-cachyos-<sched>_<ver>-<pkgrel>_amd64.deb` | `sudo dpkg -i linux-headers-cachyos-*.deb` |
+| Format | Package | Filename Pattern | Install Command |
+|--------|---------|------------------|-----------------|
+| **Arch Image** | `linux-cachyos-<sched>` | `linux-cachyos-<sched>-<ver>.<ver>.<ver>-<pkgrel>-x86_64.pkg.tar.zst` | `sudo pacman -U linux-cachyos-*.pkg.tar.zst` |
+| **Arch Headers** | `linux-cachyos-<sched>-headers` | `linux-cachyos-<sched>-headers-<ver>.<ver>.<ver>-<pkgrel>-x86_64.pkg.tar.zst` | `sudo pacman -U linux-cachyos-*-headers-*.pkg.tar.zst` |
+| **Debian Image** | `linux-image-cachyos-<sched>` | `linux-image-cachyos-<sched>_<ver>-<pkgrel>_amd64.deb` | `sudo dpkg -i linux-image-cachyos-*.deb` |
+| **Debian Headers** | `linux-headers-cachyos-<sched>` | `linux-headers-cachyos-<sched>_<ver>-<pkgrel>_amd64.deb` | `sudo dpkg -i linux-headers-cachyos-*.deb` |
 
-💡 **Headers are only built & packaged if `_build_debug=yes`**
+⚠️ Headers are only built and packaged when `_build_debug=yes`.
 
-## 🛠️ Usage & Configuration
-### Basic Run
-```bash
-chmod +x NobleKernelBuild-stable.sh
-./NobleKernelBuild-stable.sh
-```
+## ⚙️ Configuration
+All options use the `_` prefix and can be overridden at runtime via environment variables without editing the script.
 
-### Environment Variable Overrides
-All configuration options use the `_` prefix and can be overridden at runtime without editing the script:
-```bash
-_cpusched=rt _use_llvm_lto=none _build_deb=no _build_archpkg=yes ./NobleKernelBuild-stable.sh
-```
+**Syntax:** `_var=value ./NobleKernelBuild-stable.sh`
 
-### Key Configuration Variables
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `_cpusched` | `bore` | Scheduler: `bore`, `bmq`, `hardened`, `cachyos`, `eevdf`, `rt`, `rt-bore` |
@@ -70,33 +53,69 @@ _cpusched=rt _use_llvm_lto=none _build_deb=no _build_archpkg=yes ./NobleKernelBu
 | `_HZ_ticks` | `1000` | Timer frequency: `100`, `250`, `300`, `500`, `600`, `750`, `1000` |
 | `_preempt` | `full` | Preemption: `full`, `lazy`, `voluntary`, `none` |
 | `_hugepage` | `always` | THP policy: `always`, `madvise` |
+| `_cc_harder` | `yes` | Enable `-O3` compiler optimization |
+| `_tcp_bbr3` | `yes` | Enable BBRv3 TCP congestion control |
+| `_tickrate` | `full` | Tick type: `periodic`, `idle`, `full` |
 
-📖 See the top of the script for the complete list of configurable options.
+📖 See the top of `NobleKernelBuild-stable.sh` for the complete variable list and inline documentation.
 
-## 🔐 Security & Integrity
-- ✅ **Source Verification:** Kernel tarball, base config, and patches are verified via `b2sum` before extraction
-- ⚠️ **Package Checksums:** Generated `.deb` and `.pkg.tar.zst` files do not include embedded checksums. Manual verification is recommended for production deployments
-- 🔒 **Module Signing:** Automatically signs external modules (ZFS/r8125) if `CONFIG_MODULE_SIG=y` is enabled in the kernel config
-- 🛡️ **Safe Maintainer Scripts:** Debian `postinst`/`prerm`/`postrm` follow official kernel packaging policy and gracefully handle upgrades, removals, and purges
+## 🛠️ Requirements & Setup
+### System
+- Ubuntu Noble 24.04 LTS (other releases may work but are unvalidated)
+- `x86_64` CPU
+- ≥8 GB RAM recommended for `full` LTO builds (use `zram-generator` with `zstd` compression if needed)
+
+### Dependencies
+The script auto-checks and prompts for missing packages. Core requirements:
+```bash
+build-essential libncurses-dev libelf-dev libssl-dev flex bison cpio gettext \
+python3 perl zstd wget curl git pkg-config kmod fakeroot dwarves bc dpkg-dev libarchive-tools
+```
+- LLVM/Clang 21 packages are required when `_use_llvm_lto!=none`
+- `rustc`, `rust-src`, `bindgen` are required for non-RT schedulers
+- `fakeroot` is mandatory for safe module installation and packaging
+
+### Execution
+```bash
+chmod +x NobleKernelBuild-stable.sh
+./NobleKernelBuild-stable.sh
+```
+The script will:
+1. Validate OS, usr-merge status, and dependencies
+2. Restart under `fakeroot` if needed
+3. Download, verify (`b2sum`), extract, patch, and configure sources
+4. Compile kernel, modules, and optional extras (ZFS/r8125)
+5. Stage artifacts, fix permissions, and generate both package formats
+6. Exit with exact installation commands
+
+## 🔐 Integrity & Security
+| Component | Verification Status | Notes |
+|-----------|---------------------|-------|
+| Kernel tarball | ✅ `b2sum` verified | Checked before extraction |
+| Base config | ✅ `b2sum` verified | Checked before configuration |
+| Patches | ⚠️ Downloaded, not checksummed | Fetched from upstream CachyOS patch repository |
+| Generated packages | ❌ Not signed/checksummed | Manual verification recommended for production deployment |
+| Kernel modules | ✅ Conditionally signed | Auto-signed if `CONFIG_MODULE_SIG=y` is enabled |
+| Maintainer scripts | ✅ Policy-compliant | Safe `initramfs`, `depmod`, `grub`, and symlink handling |
 
 ## 🐛 Reporting Issues
 Please report all bugs to:  
 👉 https://github.com/Autisticestradioluser/Build-CachyOS-Kernel-On-Ubuntu/issues
 
-**Do not file issues with CachyOS or upstream Linux kernel repositories.** This script is an independent community project and is not supported by upstream maintainers.
+**Do not file issues with CachyOS or upstream Linux kernel repositories.** This script is an independent community project.
 
-When reporting, please include:
+When reporting, include:
 - Exact distro & release (`lsb_release -a`)
-- The exact command/environment variables used
-- Full terminal output or error logs
+- Full command & environment overrides used
+- Complete terminal output or error logs
 - `uname -a` before building
-- A clear description of expected vs actual behavior
+- Expected vs actual behavior
 
 ## 📜 Upstream Sources & Credits
-This script integrates patches, configuration baselines, and packaging inspirations from:
+This script integrates patches, configuration baselines, and packaging conventions from:
 - [CachyOS Linux Kernel](https://github.com/CachyOS/linux-cachyos)
-- [CachyOS Kernel Patches](https://github.com/CachyOS/kernel-patches)
-- Arch Linux `linux` PKGBUILD packaging conventions
+- [CachyOS Kernel Patches](https://github.com/cachyos/kernel-patches)
+- Arch Linux `linux` PKGBUILD packaging standards
 - Debian `linux-image` maintainer script policies
 
 All upstream code remains under its original licenses. This script is provided as-is for educational and personal use.
