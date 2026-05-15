@@ -47,7 +47,7 @@ _build_deb=${_build_deb:-yes}            # yes = build Debian .deb
 
 # Kernel version info
 _major=7.0
-_minor=3
+_minor=7
 _tagrel=1
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
@@ -56,7 +56,7 @@ _srcver=${_major}.${_minor}-${_tagrel}
 _srcname=cachyos-${_srcver}
 
 # Checksums (Update per release)
-_kernel_b2sum=${_kernel_b2sum:-d6ab08acd91f405f36205070cdebab99d244e439ca00d823c4068aeba583818dd3c1fdc0d0b3836406ecb1a93b611c637533b50ae96e9bda3153682bbb9f33bd}
+_kernel_b2sum=${_kernel_b2sum:-5ccbf60f1868bcec6453d4343e606ec80ca74a53aae1b1472876b9667bc0407cece06b71b67e495edbe1f5ca05a24873abcb7148a028bfb33177fdf82931092f}
 _config_b2sum=${_config_b2sum:-7bb5113dbc67e8e2ce5c5473ae1b08973af5adba0a6a14c64a213bb116e5a172d40b7c274b85ad15553511484ee1f120e0372251e242c6f87ce6920235f0c136}
 
 _patchsource="https://raw.githubusercontent.com/cachyos/kernel-patches/master/${_major}"
@@ -163,7 +163,7 @@ esac
 [[ "$_cpusched" == "rt" || "$_cpusched" == "rt-bore" ]] && wget -q -N -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/0001-rt-i915.patch"
 [[ "$_use_llvm_lto" != "none" ]] && [ ! -f "${DOWNLOAD_DIR}/dkms-clang.patch" ] && wget -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/dkms-clang.patch"
 
-[ "$_build_zfs" = "yes" ] && [ ! -d "${SRC_DIR}/zfs" ] && git clone --revision=0829cf892b5d7b3a0e8aa76cc7aca02b84f62557 --depth=1 https://github.com/cachyos/zfs.git "${SRC_DIR}/zfs"
+[ "$_build_zfs" = "yes" ] && [ ! -d "${SRC_DIR}/zfs" ] && git clone --revision=6330a45b06d20125de679aae5f63ba14082671ef --depth=1 https://github.com/cachyos/zfs.git "${SRC_DIR}/zfs"
 [ "$_build_r8125" = "yes" ] && [ ! -d "${SRC_DIR}/r8125" ] && git clone --depth=1 https://github.com/aravance/r8125.git "${SRC_DIR}/r8125"
 
 # ======================== EXTRACT & CONFIGURE ========================
@@ -631,3 +631,4 @@ print_info "Build directory preserved at: ${BUILD_DIR}"
 print_info "Config saved at: ${BUILD_DIR}/config-${KERNEL_VERSION}"
 print_info "To clean up: rm -rf ${BUILD_DIR}/src"
 print_success "Build process completed successfully!"
+
