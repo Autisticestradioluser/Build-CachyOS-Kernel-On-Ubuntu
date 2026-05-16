@@ -362,26 +362,26 @@ DESC="Linux ${KERNEL_VERSION} CachyOS kernel [${_cpusched^^} sched] [${_preempt}
 
 # --- ARCH PACKAGING ---
 if [[ "$_build_archpkg" == "yes" ]]; then
-	print_info "Building Arch packages..."
-	ARCH_IMG="${BUILD_DIR}/pkg-arch-img"
-	ARCH_HDR="${BUILD_DIR}/pkg-arch-hdr"
-	rm -rf "${ARCH_IMG}" "${ARCH_HDR}"
-	mkdir -p "${ARCH_IMG}" "${ARCH_HDR}"
+    print_info "Building Arch packages..."
+    ARCH_IMG="${BUILD_DIR}/pkg-arch-img"
+    ARCH_HDR="${BUILD_DIR}/pkg-arch-hdr"
+    rm -rf "${ARCH_IMG}" "${ARCH_HDR}"
+    mkdir -p "${ARCH_IMG}" "${ARCH_HDR}"
 
-	# Image tree
-	cp -a "${INSTALL_DIR}/boot" "${ARCH_IMG}/"
-	mkdir -p "${ARCH_IMG}/usr/lib"
-	if [ "$USR_MERGED" = true ]; then
-		cp -a "${INSTALL_DIR}/usr/lib/modules" "${ARCH_IMG}/usr/lib/"
-	else
-		mkdir -p "${ARCH_IMG}/usr/lib/modules"
-		cp -a "${INSTALL_DIR}/lib/modules/${KERNEL_VERSION}" "${ARCH_IMG}/usr/lib/modules/"
-	fi
-	cp -a "${INSTALL_DIR}/etc" "${ARCH_IMG}/" 2>/dev/null || true
+    # Image tree
+    cp -a "${INSTALL_DIR}/boot" "${ARCH_IMG}/"
+    mkdir -p "${ARCH_IMG}/usr/lib"
+    if [ "$USR_MERGED" = true ]; then
+        cp -a "${INSTALL_DIR}/usr/lib/modules" "${ARCH_IMG}/usr/lib/"
+    else
+        mkdir -p "${ARCH_IMG}/usr/lib/modules"
+        cp -a "${INSTALL_DIR}/lib/modules/${KERNEL_VERSION}" "${ARCH_IMG}/usr/lib/modules/"
+    fi
+    cp -a "${INSTALL_DIR}/etc" "${ARCH_IMG}/" 2>/dev/null || true
 
-	# mkinitcpio preset
-	mkdir -p "${ARCH_IMG}/etc/mkinitcpio.d"
-	cat > "${ARCH_IMG}/etc/mkinitcpio.d/kernel-${KERNEL_VERSION}.preset" << EOF
+    # mkinitcpio preset
+    mkdir -p "${ARCH_IMG}/etc/mkinitcpio.d"
+    cat > "${ARCH_IMG}/etc/mkinitcpio.d/kernel-${KERNEL_VERSION}.preset" << EOF
 ALL_kver="/boot/vmlinuz-${KERNEL_VERSION}"
 PRESETS=('default' 'fallback')
 default_image="/boot/initramfs-${KERNEL_VERSION}.img"
@@ -389,11 +389,12 @@ fallback_image="/boot/initramfs-${KERNEL_VERSION}-fallback.img"
 fallback_options="-S autodetect"
 EOF
 
-	# Pacman requires dots in pkgver, hyphens only before pkgrel
-	PACMAN_PKGVER="${KERNEL_VERSION//-/.}-${pkgrel}"
-	PKG_IMG_FILENAME="linux-cachyos-${_cpusched}-${PACMAN_PKGVER}-x86_64.pkg.tar.zst"
+    # Arch pkgver cannot contain hyphens. Convert to dots, append pkgrel.
+    PACMAN_PKGVER="${KERNEL_VERSION//-/.}-${pkgrel}"
+    PKG_IMG_FILENAME="linux-cachyos-${_cpusched}-${PACMAN_PKGVER}-x86_64.pkg.tar.zst"
 
-	cat > "${ARCH_IMG}/.PKGINFO" << EOF
+    # Strict Arch metadata format
+    cat > "${ARCH_IMG}/.PKGINFO" << EOF
 pkgname = linux-cachyos-${_cpusched}
 pkgbase = linux-cachyos
 pkgver = ${PACMAN_PKGVER}
@@ -407,22 +408,22 @@ depends = coreutils
 depends = kmod
 depends = initramfs
 EOF
-	cat > "${ARCH_IMG}/.BUILDINFO" << EOF
+    cat > "${ARCH_IMG}/.BUILDINFO" << EOF
 format = 1
 pkgname = linux-cachyos-${_cpusched}
 pkgver = ${PACMAN_PKGVER}
 EOF
-	bsdtar -czf "${ARCH_IMG}/.MTREE" --format=mtree -C "${ARCH_IMG}" . 2>/dev/null || rm -f "${ARCH_IMG}/.MTREE"
-	bsdtar -cf "${BUILD_DIR}/${PKG_IMG_FILENAME}" --zstd -C "${ARCH_IMG}" .
-	print_success "Arch image: ${PKG_IMG_FILENAME}"
+    bsdtar -czf "${ARCH_IMG}/.MTREE" --format=mtree -C "${ARCH_IMG}" . 2>/dev/null || rm -f "${ARCH_IMG}/.MTREE"
+    bsdtar -cf "${BUILD_DIR}/${PKG_IMG_FILENAME}" --zstd -C "${ARCH_IMG}" .
+    print_success "Arch image: ${BUILD_DIR}/${PKG_IMG_FILENAME}"
 
-	# Headers tree
-	if [ "$_build_debug" = "yes" ]; then
-		mkdir -p "${ARCH_HDR}/usr/src" "${ARCH_HDR}/usr/lib/modules/${KERNEL_VERSION}"
-		cp -a "${INSTALL_DIR}/usr/src/linux-headers-${KERNEL_VERSION}" "${ARCH_HDR}/usr/src/"
-		ln -srf "${ARCH_HDR}/usr/src/linux-headers-${KERNEL_VERSION}" "${ARCH_HDR}/usr/lib/modules/${KERNEL_VERSION}/build"
-		PKG_HDR_FILENAME="linux-cachyos-${_cpusched}-headers-${PACMAN_PKGVER}-x86_64.pkg.tar.zst"
-		cat > "${ARCH_HDR}/.PKGINFO" << EOF
+    # Headers tree
+    if [ "$_build_debug" = "yes" ]; then
+        mkdir -p "${ARCH_HDR}/usr/src" "${ARCH_HDR}/usr/lib/modules/${KERNEL_VERSION}"
+        cp -a "${INSTALL_DIR}/usr/src/linux-headers-${KERNEL_VERSION}" "${ARCH_HDR}/usr/src/"
+        ln -srf "${ARCH_HDR}/usr/src/linux-headers-${KERNEL_VERSION}" "${ARCH_HDR}/usr/lib/modules/${KERNEL_VERSION}/build"
+        PKG_HDR_FILENAME="linux-cachyos-${_cpusched}-headers-${PACMAN_PKGVER}-x86_64.pkg.tar.zst"
+        cat > "${ARCH_HDR}/.PKGINFO" << EOF
 pkgname = linux-cachyos-${_cpusched}-headers
 pkgbase = linux-cachyos
 pkgver = ${PACMAN_PKGVER}
@@ -443,182 +444,153 @@ depends = zlib
 depends = zstd
 depends = linux-cachyos-${_cpusched}
 EOF
-		cat > "${ARCH_HDR}/.BUILDINFO" << EOF
+        cat > "${ARCH_HDR}/.BUILDINFO" << EOF
 format = 1
 pkgname = linux-cachyos-${_cpusched}-headers
 pkgver = ${PACMAN_PKGVER}
 EOF
-		bsdtar -czf "${ARCH_HDR}/.MTREE" --format=mtree -C "${ARCH_HDR}" . 2>/dev/null || rm -f "${ARCH_HDR}/.MTREE"
-		bsdtar -cf "${BUILD_DIR}/${PKG_HDR_FILENAME}" --zstd -C "${ARCH_HDR}" .
-		print_success "Arch headers: ${PKG_HDR_FILENAME}"
-	fi
+        bsdtar -czf "${ARCH_HDR}/.MTREE" --format=mtree -C "${ARCH_HDR}" . 2>/dev/null || rm -f "${ARCH_HDR}/.MTREE"
+        bsdtar -cf "${BUILD_DIR}/${PKG_HDR_FILENAME}" --zstd -C "${ARCH_HDR}" .
+        print_success "Arch headers: ${BUILD_DIR}/${PKG_HDR_FILENAME}"
+    fi
 fi
 
 # --- DEBIAN PACKAGING ---
 if [[ "$_build_deb" == "yes" ]]; then
-	print_info "Building Debian packages..."
-	DEB_IMG="${BUILD_DIR}/pkg-deb-img"
-	DEB_HDR="${BUILD_DIR}/pkg-deb-hdr"
-	rm -rf "${DEB_IMG}" "${DEB_HDR}"
-	mkdir -p "${DEB_IMG}/DEBIAN" "${DEB_IMG}/boot" "${DEB_IMG}/lib/modules"
-	
-	cp -a "${INSTALL_DIR}/boot/"* "${DEB_IMG}/boot/"
-	if [ "$USR_MERGED" = true ]; then
-		cp -a "${INSTALL_DIR}/usr/lib/modules/${KERNEL_VERSION}" "${DEB_IMG}/lib/modules/"
-	else
-		cp -a "${INSTALL_DIR}/lib/modules/${KERNEL_VERSION}" "${DEB_IMG}/lib/modules/"
-	fi
+    print_info "Building Debian packages..."
+    DEB_IMG="${BUILD_DIR}/pkg-deb-img"
+    DEB_HDR="${BUILD_DIR}/pkg-deb-hdr"
+    rm -rf "${DEB_IMG}" "${DEB_HDR}"
+    mkdir -p "${DEB_IMG}/DEBIAN" "${DEB_IMG}/boot" "${DEB_IMG}/lib/modules"
 
-	cat > "${DEB_IMG}/DEBIAN/control" << EOF
+    cp -a "${INSTALL_DIR}/boot/"* "${DEB_IMG}/boot/"
+    if [ "$USR_MERGED" = true ]; then
+        cp -a "${INSTALL_DIR}/usr/lib/modules/${KERNEL_VERSION}" "${DEB_IMG}/lib/modules/"
+    else
+        cp -a "${INSTALL_DIR}/lib/modules/${KERNEL_VERSION}" "${DEB_IMG}/lib/modules/"
+    fi
+
+    # Clean staging artifacts to prevent dpkg "Directory not empty" warnings
+    find "${DEB_IMG}/lib/modules/${KERNEL_VERSION}" \( -name ".fresh-install" -o -name ".keep" -o -name ".empty" \) -delete 2>/dev/null || true
+
+    # Debian versioning: KERNEL_VERSION already includes pkgrel, so we use it directly.
+    cat > "${DEB_IMG}/DEBIAN/control" << EOF
 Package: linux-image-cachyos-${_cpusched}
-Version: ${KERNEL_VERSION}-${pkgrel}
+Version: ${KERNEL_VERSION}
 Section: kernel
 Priority: optional
 Maintainer: GitHub User
 Architecture: amd64
 Depends: initramfs-tools (>= 0.125), linux-base (>= 4.0~)
 Description: ${DESC}
- CachyOS-patched Linux kernel for Debian/Ubuntu. Includes zstd modules,
+ CachyOS-optimized Linux kernel for Debian/Ubuntu. Includes zstd modules,
  BBRv3, and optimized scheduling/preemption.
 EOF
-	[[ "$_build_r8125" == "yes" ]] && echo " Note: Includes r8125 module and blacklists r8169" >> "${DEB_IMG}/DEBIAN/control"
+    [[ "$_build_r8125" == "yes" ]] && echo "Conflicts: r8169-dkms" >> "${DEB_IMG}/DEBIAN/control"
 
-	version="${KERNEL_VERSION}"
-	image_path="/boot/vmlinuz-${version}"
+    version="${KERNEL_VERSION}"
 
-	cat > "${DEB_IMG}/DEBIAN/preinst" << EOF
+    # prerm
+    cat > "${DEB_IMG}/DEBIAN/prerm" << EOF
 #!/bin/sh
 set -e
 version='${version}'
-image_path='${image_path}'
-if [ "\$1" = abort-upgrade ]; then exit 0; fi
-if [ "\$1" = install ]; then
-	mkdir -p /lib/modules/\$version
-	touch /lib/modules/\$version/.fresh-install
+if [ "\$1" != "remove" ]; then exit 0; fi
+if command -v linux-check-removal >/dev/null 2>&1; then
+    linux-check-removal "\$version" || true
 fi
-if [ -d /etc/kernel/preinst.d ]; then
-	DEB_MAINT_PARAMS="\$*" run-parts --report --exit-on-error --arg=\$version --arg=\$image_path /etc/kernel/preinst.d
-fi
-exit 0
-EOF
-	chmod +x "${DEB_IMG}/DEBIAN/preinst"
-
-	cat > "${DEB_IMG}/DEBIAN/postinst" << EOFF
-#!/bin/sh
-set -e
-version='${version}'
-image_path='${image_path}'
-if [ "\$1" != configure ]; then exit 0; fi
-depmod \$version
-if [ -f /lib/modules/\$version/.fresh-install ]; then change=install; else change=upgrade; fi
 if command -v update-initramfs >/dev/null 2>&1; then
-	update-initramfs -c -k "\${version}" || update-initramfs -u -k "\${version}"
+    update-initramfs -d -k "\$version" 2>/dev/null || true
 fi
-linux-update-symlinks \$change \$version \$image_path
-rm -f /lib/modules/\$version/.fresh-install
-if [ -d /etc/kernel/postinst.d ]; then
-	mkdir -p /usr/lib/linux/triggers
-	cat - >/usr/lib/linux/triggers/\$version <<EOF
-DEB_MAINT_PARAMS="\$*" run-parts --report --exit-on-error --arg=\$version --arg=\$image_path /etc/kernel/postinst.d
-EOF
-	dpkg-trigger --no-await linux-update-\$version
-fi
-if command -v update-grub >/dev/null 2>&1; then update-grub; fi
-EOFF
-	if [ "$_build_r8125" = "yes" ]; then
-		cat >> "${DEB_IMG}/DEBIAN/postinst" << 'EOF'
-echo "blacklist r8169" | tee -a /etc/modprobe.d/disable-r8169-for-r8125.conf
-echo "successfully created /etc/modprobe.d/disable-r8169-for-r8125.conf"
-EOF
-	fi
-	echo "exit 0" >> "${DEB_IMG}/DEBIAN/postinst"
-	chmod +x "${DEB_IMG}/DEBIAN/postinst"
-
-	cat > "${DEB_IMG}/DEBIAN/prerm" << EOF
-#!/bin/sh
-set -e
-version='${version}'
-image_path='${image_path}'
-if [ "\$1" != remove ]; then exit 0; fi
-linux-check-removal "\$version"
-if [ -d /etc/kernel/prerm.d ]; then
-	DEB_MAINT_PARAMS="\$*" run-parts --report --exit-on-error --arg=\$version --arg=\$image_path /etc/kernel/prerm.d
-fi
-if command -v linux-update-symlinks >/dev/null 2>&1; then linux-update-symlinks remove "\${version}" "\${image_path}"; fi
-if command -v update-initramfs >/dev/null 2>&1; then update-initramfs -d -k "\${version}"; fi
-EOF
-	if [ "$_build_r8125" = "yes" ]; then
-		cat >> "${DEB_IMG}/DEBIAN/prerm" << 'EOF'
-if [ -f /etc/modprobe.d/disable-r8169-for-r8125.conf ]; then rm -rf /etc/modprobe.d/disable-r8169-for-r8125.conf; fi
-EOF
-	fi
-	echo "exit 0" >> "${DEB_IMG}/DEBIAN/prerm"
-	chmod +x "${DEB_IMG}/DEBIAN/prerm"
-
-	cat > "${DEB_IMG}/DEBIAN/postrm" << EOF
-#!/bin/sh
-set -e
-version='${version}'
-image_path='${image_path}'
-rm -f /lib/modules/\$version/.fresh-install
-if [ "\$1" != upgrade ] && command -v linux-update-symlinks >/dev/null; then linux-update-symlinks remove \$version \$image_path; fi
-if [ -d /etc/kernel/postrm.d ]; then
-	if [ -f /usr/lib/linux/triggers/\$version ]; then rm -f /usr/lib/linux/triggers/\$version; fi
-	DEB_MAINT_PARAMS="\$*" run-parts --report --exit-on-error --arg=\$version --arg=\$image_path /etc/kernel/postrm.d
-fi
-if [ "\$1" = purge ]; then
-	moddir="/lib/modules/\$version"
-	if [ -d "\$moddir" ]; then
-		find "\$moddir" -mindepth 1 -delete 2>/dev/null || rm -rf "\$moddir"/*
-		rmdir "\$moddir" 2>/dev/null || true
-	fi
-fi
-if [ "\$1" = remove ] || [ "\$1" = purge ]; then update-grub || true; fi
 exit 0
 EOF
-	chmod +x "${DEB_IMG}/DEBIAN/postrm"
+    chmod +x "${DEB_IMG}/DEBIAN/prerm"
 
-	dpkg-deb -b "${DEB_IMG}" "${BUILD_DIR}/linux-image-cachyos-${_cpusched}_${KERNEL_VERSION}-${pkgrel}_amd64.deb"
-	print_success "Debian image: linux-image-cachyos-${_cpusched}_${KERNEL_VERSION}-${pkgrel}_amd64.deb"
+    # postinst
+    cat > "${DEB_IMG}/DEBIAN/postinst" << EOF
+#!/bin/sh
+set -e
+version='${version}'
+if [ "\$1" != "configure" ]; then exit 0; fi
+depmod "\$version"
+if command -v update-initramfs >/dev/null 2>&1; then
+    update-initramfs -c -k "\$version" 2>/dev/null || update-initramfs -u -k "\$version"
+fi
+if command -v update-grub >/dev/null 2>&1; then
+    update-grub
+fi
+exit 0
+EOF
+    chmod +x "${DEB_IMG}/DEBIAN/postinst"
 
-	# Debian Headers
-	if [ "$_build_debug" = "yes" ]; then
-		mkdir -p "${DEB_HDR}/DEBIAN" "${DEB_HDR}/usr/src" "${DEB_HDR}/lib/modules/${KERNEL_VERSION}"
-		cp -a "${INSTALL_DIR}/usr/src/linux-headers-${KERNEL_VERSION}" "${DEB_HDR}/usr/src/"
-		ln -srf "${DEB_HDR}/usr/src/linux-headers-${KERNEL_VERSION}" "${DEB_HDR}/lib/modules/${KERNEL_VERSION}/build"
-		cat > "${DEB_HDR}/DEBIAN/control" << EOF
+    # postrm (Purge) - Standard Debian kernel practice to prevent directory warnings
+    cat > "${DEB_IMG}/DEBIAN/postrm" << EOF
+#!/bin/sh
+set -e
+version='${version}'
+if [ "\$1" = "purge" ]; then
+    moddir="/lib/modules/\$version"
+    # Only remove if not currently running
+    if [ -d "\$moddir" ] && [ "\$(uname -r)" != "\$version" ]; then
+        rm -rf "\$moddir" 2>/dev/null || true
+    fi
+    if command -v update-grub >/dev/null 2>&1; then
+        update-grub || true
+    fi
+fi
+exit 0
+EOF
+    chmod +x "${DEB_IMG}/DEBIAN/postrm"
+
+    dpkg-deb --root-owner-group -b "${DEB_IMG}" "${BUILD_DIR}/linux-image-cachyos-${_cpusched}_${KERNEL_VERSION}_amd64.deb"
+    print_success "Debian image: ${BUILD_DIR}/linux-image-cachyos-${_cpusched}_${KERNEL_VERSION}_amd64.deb"
+    DEB_PKG="${BUILD_DIR}/linux-image-cachyos-${_cpusched}_${KERNEL_VERSION}_amd64.deb"
+
+    # Debian Headers
+    if [ "$_build_debug" = "yes" ]; then
+        mkdir -p "${DEB_HDR}/DEBIAN" "${DEB_HDR}/usr/src" "${DEB_HDR}/lib/modules/${KERNEL_VERSION}"
+        cp -a "${INSTALL_DIR}/usr/src/linux-headers-${KERNEL_VERSION}" "${DEB_HDR}/usr/src/"
+        ln -srf "${DEB_HDR}/usr/src/linux-headers-${KERNEL_VERSION}" "${DEB_HDR}/lib/modules/${KERNEL_VERSION}/build"
+        cat > "${DEB_HDR}/DEBIAN/control" << EOF
 Package: linux-headers-cachyos-${_cpusched}
-Version: ${KERNEL_VERSION}-${pkgrel}
+Version: ${KERNEL_VERSION}
 Section: kernel
 Priority: optional
 Maintainer: GitHub User
 Architecture: amd64
-Depends: make gcc libc6-dev binutils linux-image-cachyos-${_cpusched} (= ${KERNEL_VERSION}-${pkgrel})
+Depends: make gcc libc6-dev binutils linux-image-cachyos-${_cpusched} (= ${KERNEL_VERSION})
 Description: Headers for ${DESC}
+ Required for building external kernel modules.
 EOF
-		echo -e "#!/bin/sh\nexit 0" > "${DEB_HDR}/DEBIAN/postinst"
-		chmod +x "${DEB_HDR}/DEBIAN/postinst"
-		dpkg-deb -b "${DEB_HDR}" "${BUILD_DIR}/linux-headers-cachyos-${_cpusched}_${KERNEL_VERSION}-${pkgrel}_amd64.deb"
-		print_success "Debian headers: linux-headers-cachyos-${_cpusched}_${KERNEL_VERSION}-${pkgrel}_amd64.deb"
-	fi
+        echo "#!/bin/sh
+exit 0" > "${DEB_HDR}/DEBIAN/postinst"
+        chmod +x "${DEB_HDR}/DEBIAN/postinst"
+        dpkg-deb --root-owner-group -b "${DEB_HDR}" "${BUILD_DIR}/linux-headers-cachyos-${_cpusched}_${KERNEL_VERSION}_amd64.deb"
+        print_success "Debian headers: ${BUILD_DIR}/linux-headers-cachyos-${_cpusched}_${KERNEL_VERSION}_amd64.deb"
+        DEB_HDR_PKG="${BUILD_DIR}/linux-headers-cachyos-${_cpusched}_${KERNEL_VERSION}_amd64.deb"
+    fi
 fi
 
 # ======================== SUMMARY ========================
 print_step "Step 11: Verification & Summary"
 print_warning "The kernel has been built successfully!"
 echo "=========================================="
-[[ "$_build_archpkg" == "yes" ]] && echo " Arch Image:   sudo pacman -U linux-cachyos-${_cpusched}-${KERNEL_VERSION//-/.}-${pkgrel}-x86_64.pkg.tar.zst"
-[[ "$_build_archpkg" == "yes" && "$_build_debug" == "yes" ]] && echo " Arch Headers: sudo pacman -U linux-cachyos-${_cpusched}-headers-${KERNEL_VERSION//-/.}-${pkgrel}-x86_64.pkg.tar.zst"
-[[ "$_build_deb" == "yes" ]] && echo " Debian Image: sudo dpkg -i linux-image-cachyos-${_cpusched}_${KERNEL_VERSION}-${pkgrel}_amd64.deb"
-[[ "$_build_deb" == "yes" && "$_build_debug" == "yes" ]] && echo " Debian Hdrs:  sudo dpkg -i linux-headers-cachyos-${_cpusched}_${KERNEL_VERSION}-${pkgrel}_amd64.deb"
+if [[ "$_build_archpkg" == "yes" ]]; then
+    echo " Arch Image:   sudo pacman -U ${BUILD_DIR}/${PKG_IMG_FILENAME}"
+    [[ "$_build_debug" == "yes" ]] && echo " Arch Headers: sudo pacman -U ${BUILD_DIR}/${PKG_HDR_FILENAME}"
+fi
+if [[ "$_build_deb" == "yes" ]]; then
+    echo " Debian Image: sudo dpkg -i ${DEB_PKG}"
+    [[ "$_build_debug" == "yes" ]] && echo " Debian Hdrs:  sudo dpkg -i ${DEB_HDR_PKG}"
+fi
 echo "=========================================="
 
 if [ "$USR_MERGED" = true ]; then
-	print_success "Your system uses usr-merged filesystem layout"
-	print_info "Modules will be installed to /usr/lib/modules/ (accessed via /lib/modules symlink)"
+    print_success "Your system uses usr-merged filesystem layout"
+    print_info "Modules will be installed to /usr/lib/modules/ (accessed via /lib/modules symlink)"
 else
-	print_warning "Your system uses traditional filesystem layout"
-	print_info "Modules will be installed to /lib/modules/"
+    print_warning "Your system uses traditional filesystem layout"
+    print_info "Modules will be installed to /lib/modules/"
 fi
 
 echo
