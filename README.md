@@ -1,130 +1,125 @@
-# Linux Kernel Builder for Ubuntu Noble with CachyOS Patches
+---
 
-A deterministic, single-run build script that compiles the Linux kernel with CachyOS patches and outputs **fully installable packages for both Debian/Ubuntu and Arch Linux**.
+# Custom Linux Kernel Builder for Ubuntu (Arch + Debian Output)
 
-## 🎯 Scope & Behavior
-- **Host OS:** Ubuntu Noble 24.04 LTS (optimized & validated)
-- **Architecture:** `x86_64` / `amd64`
-- **Filesystem:** Fully supports merged-usr (`/lib -> /usr/lib`) and traditional layouts
-- **Output:** Split `linux-image` + `linux-headers` packages for both `.deb` and `.pkg.tar.zst` formats
-- **Execution:** Runs once, stages artifacts, packages both formats simultaneously, exits cleanly
+A straightforward build script that compiles a customized Linux kernel with CachyOS performance patches and packages it for both **Ubuntu/Debian** and **Arch Linux** in a single run. Built for people who want fine-grained control over their kernel without juggling multiple build systems or packaging formats.
 
-## ✅ Verified Features
-| Feature | Status | Implementation |
-|---------|--------|----------------|
-| CachyOS patch integration | ✅ Active | Downloads & applies scheduler, RT, hardened, and DKMS-clang patches from upstream |
-| Dual package output | ✅ Active | Generates `.deb` and `.pkg.tar.zst` in one build run |
-| Split image/headers | ✅ Active | Controlled by `_build_debug=yes`. Headers packaged separately with correct `/lib/modules/$ver/build` symlinks |
-| Pacman compliance | ✅ Active | `.PKGINFO`, `.BUILDINFO`, `.MTREE`, sanitized `pkgver` (dots in version, hyphen before pkgrel) |
-| Debian policy compliance | ✅ Active | `postinst`/`prerm`/`postrm` follow kernel packaging standards; safe `initramfs`/GRUB handling |
-| Source integrity verification | ✅ Active | `b2sum` validation for kernel tarball and base config before extraction |
-| Module signing | ✅ Conditional | Runs automatically if `CONFIG_MODULE_SIG=y` is present in the kernel config |
-| Fakeroot handling | ✅ Active | Auto-detects, fixes permissions, and restarts under `fakeroot` if needed |
-| r8125 driver integration | ✅ Active | Builds, packages, and auto-blacklists `r8169` via maintainer scripts |
-| ZFS module support | ✅ Conditional | Builds when `_build_zfs=yes`. Incompatible with `rt`/`rt-bore` schedulers (enforced by script) |
+>  **AI Assistance Notice:** This project was developed with AI help. AI-generated automation does not guarantee correctness. Always review the code, test in a safe environment, and understand the risks before using it on important systems. Human oversight is required.
+>
+> ⚖️ **License:** This project is dedicated to the **Public Domain**. You are free to use, modify, distribute, and sell this script for any purpose without restriction. No warranty is provided.
 
-## 📦 Package Output & Installation
-Packages are placed in the build directory after successful compilation.
+---
 
-| Format | Package | Filename Pattern | Install Command |
-|--------|---------|------------------|-----------------|
-| **Arch Image** | `linux-cachyos-<sched>` | `linux-cachyos-<sched>-<ver>.<ver>.<ver>-<pkgrel>-x86_64.pkg.tar.zst` | `sudo pacman -U linux-cachyos-*.pkg.tar.zst` |
-| **Arch Headers** | `linux-cachyos-<sched>-headers` | `linux-cachyos-<sched>-headers-<ver>.<ver>.<ver>-<pkgrel>-x86_64.pkg.tar.zst` | `sudo pacman -U linux-cachyos-*-headers-*.pkg.tar.zst` |
-| **Debian Image** | `linux-image-cachyos-<sched>` | `linux-image-cachyos-<sched>_<ver>-<pkgrel>_amd64.deb` | `sudo dpkg -i linux-image-cachyos-*.deb` |
-| **Debian Headers** | `linux-headers-cachyos-<sched>` | `linux-headers-cachyos-<sched>_<ver>-<pkgrel>_amd64.deb` | `sudo dpkg -i linux-headers-cachyos-*.deb` |
+##  Quick Start
+*Make sure you understand this first.*
 
-⚠️ Headers are only built and packaged when `_build_debug=yes`.
+1.  **Make the script executable**
+    ```bash
+    chmod +x pkgbuild.sh
+    ```
+2.  **Run it**
+    ```bash
+    ./pkgbuild.sh
+    ```
+3.  **Wait for the build to finish** (this takes time, grab a coffee ☕)
+4.  **Install the output you need:**
+    *   **Ubuntu/Debian:** `sudo dpkg -i linux-image-cachyos-*.deb`
+    *   **Arch:** `sudo pacman -U linux-cachyos-*.pkg.tar.zst`
+5.  **Reboot into the new kernel**
 
-## ⚙️ Configuration
-All options use the `_` prefix and can be overridden at runtime via environment variables without editing the script.
+---
 
-**Syntax:** `_var=value ./pkgbuild.sh`
+## 📦 What This Script Does
+*   **Dual output in one run:** Creates both `.deb` and `.pkg.tar.zst` packages automatically.
+*   **Split packages:** Kernel image and headers are packaged separately. Enable headers with `_build_debug=yes`.
+*   **Environment overrides:** Change any setting without editing the script. Example: `_cpusched=rt ./pkgbuild.sh`.
+*   **Usr-merge aware:** Works correctly on modern Ubuntu (`/lib → /usr/lib`) and traditional filesystem layouts.
+*   **Source verification:** Checks `b2sum` hashes for the kernel tarball and base config before building.
+*   **Optional extras:** Built-in r8125 driver (with automatic r8169 blacklist), ZFS module support, custom tick rates, schedulers, LTO, and more.
 
-| Variable | Default | Description |
-|----------|---------|-------------|
+---
+
+## ️ Key Configuration Options
+All options use an underscore prefix and can be passed at runtime:  
+`_variable=value ./pkgbuild.sh`
+
+| Variable | Default | What it controls |
+|:---|:---|:---|
 | `_cpusched` | `bore` | Scheduler: `bore`, `bmq`, `hardened`, `cachyos`, `eevdf`, `rt`, `rt-bore` |
-| `_use_llvm_lto` | `full` | LTO mode: `none`, `thin`, `full`, `thin-dist` |
-| `_processor_opt` | `native` | CPU target: `native`, `zen4`, `generic_v1`-`v4` |
+| `_use_llvm_lto` | `full` | Link-time optimization: `none`, `thin`, `full`, `thin-dist` |
 | `_build_archpkg` | `yes` | Build Arch `.pkg.tar.zst` + mkinitcpio preset |
-| `_build_deb` | `yes` | Build Debian `.deb` package |
+| `_build_deb` | `yes` | Build Debian/Ubuntu `.deb` package |
 | `_build_debug` | `no` | Build & package kernel headers |
-| `_build_zfs` | `no` | Build in-tree ZFS module (incompatible with `rt`/`rt-bore`) |
-| `_build_r8125` | `yes` | Build & package r8125 driver (auto-blacklists r8169) |
-| `_HZ_ticks` | `1000` | Timer frequency: `100`, `250`, `300`, `500`, `600`, `750`, `1000` |
-| `_preempt` | `full` | Preemption: `full`, `lazy`, `voluntary`, `none` |
-| `_hugepage` | `always` | THP policy: `always`, `madvise` |
-| `_cc_harder` | `yes` | Enable `-O3` compiler optimization |
-| `_tcp_bbr3` | `yes` | Enable BBRv3 TCP congestion control |
-| `_tickrate` | `full` | Tick type: `periodic`, `idle`, `full` |
+| `_build_r8125` | `yes` | Include r8125 driver (automatically blacklists r8169) |
+| `_HZ_ticks` | `1000` | Timer frequency (100–1000) |
+| `_preempt` | `full` | Preemption model: `full`, `lazy`, `voluntary`, `none` |
+| `_hugepage` | `always` | Transparent hugepages: `always`, `madvise` |
 
-📖 See the top of `pkgbuild.sh` for the complete variable list and inline documentation.
+📖 The complete list of options and inline explanations lives at the top of [`pkgbuild.sh`](pkgbuild.sh).
 
-## 🛠️ Requirements & Setup
-### System
-- Ubuntu Noble 24.04 LTS (other releases may work but are unvalidated)
-- `x86_64` CPU
-- ≥8 GB RAM recommended for `full` LTO builds (use `zram-generator` with `zstd` compression if needed)
+---
 
-### Dependencies
-The script auto-checks and prompts for missing packages. Core requirements:
-```bash
-build-essential libncurses-dev libelf-dev libssl-dev flex bison cpio gettext \
-python3 perl zstd wget curl git pkg-config kmod fakeroot dwarves bc dpkg-dev libarchive-tools
-```
-- LLVM/Clang 21 packages are required when `_use_llvm_lto!=none`
-- `rustc`, `rust-src`, `bindgen` are required for non-RT schedulers
-- `fakeroot` is mandatory for safe module installation and packaging
+## 🛠️ Requirements
+*   **OS:** Ubuntu Noble 24.04 LTS (other versions may work but are untested)
+*   **CPU:** x86_64
+*   **RAM:** ~16 GB recommended for full LTO builds (zram compression helps)
+*   **Disk:** ~50 GB free space (kernel builds and staging take significant space)
+*   **Dependencies:** The script checks for missing packages automatically. If anything is missing, it will tell you exactly what to install.
 
-### Execution
-```bash
-chmod +x pkgbuild.sh
-./pkgbuild.sh
-```
-The script will:
-1. Validate OS, usr-merge status, and dependencies
-2. Restart under `fakeroot` if needed
-3. Download, verify (`b2sum`), extract, patch, and configure sources
-4. Compile kernel, modules, and optional extras (ZFS/r8125)
-5. Stage artifacts, fix permissions, and generate both package formats
-6. Exit with exact installation commands
+---
 
-## 🔐 Integrity & Security
-| Component | Verification Status | Notes |
-|-----------|---------------------|-------|
-| Kernel tarball | ✅ `b2sum` verified | Checked before extraction |
-| Base config | ✅ `b2sum` verified | Checked before configuration |
-| Patches | ⚠️ Downloaded, not checksummed | Fetched from upstream CachyOS patch repository |
-| Generated packages | ❌ Not signed/checksummed | Manual verification recommended for production deployment |
-| Kernel modules | ✅ Conditionally signed | Auto-signed if `CONFIG_MODULE_SIG=y` is enabled |
-| Maintainer scripts | ✅ Policy-compliant | Safe `initramfs`, `depmod`, `grub`, and symlink handling |
+##  Integrity & Security Notes
+*   ✅ **Verified before build:** Kernel source and base config are checked against known `b2sum` hashes.
+*   ✅ **Conditional module signing:** External modules (ZFS/r8125) are signed automatically if `CONFIG_MODULE_SIG=y` is enabled in the kernel config.
+*   ⚠️ **Package checksums not included:** Generated `.deb` and `.pkg.tar.zst` files are not digitally signed or checksummed by the script. Verify them manually if security is critical.
+*   ⚠️ **AI-assisted development:** This script contains AI-generated logic and packaging routines. AI does not replace human review. Always test in a non-critical environment first.
 
-## 🐛 Reporting Issues
-Please report all bugs to:  
-👉 https://github.com/Autisticestradioluser/Build-CachyOS-Kernel-On-Ubuntu/issues
+---
 
-**Do not file issues with CachyOS or upstream Linux kernel repositories.** This script is an independent community project.
+## ⚠️ Risks & Warnings (Please Read Carefully)
+Custom kernel compilation carries real, unavoidable risks. Acknowledge these before proceeding:
 
-When reporting, include:
-- Exact distro & release (`lsb_release -a`)
-- Full command & environment overrides used
-- Complete terminal output or error logs
-- `uname -a` before building
-- Expected vs actual behavior
+*   🚨 **System may fail to boot:** Mismatched configs, missing firmware, or hardware incompatibilities can render your system unbootable.
+*   💾 **Data loss is possible:** Boot failures, failed initramfs generation, or disk errors during/after install can corrupt files.
+*   🔓 **Security implications:** Custom kernels bypass distribution security patches and updates. You are responsible for keeping them current and safe.
+*   ️ **Hardware compatibility isn't guaranteed:** Some GPUs, Wi-Fi cards, storage controllers, or peripherals may lack working out-of-tree modules.
+*   📦 **No warranty or support:** This is a personal/community tool. It is not maintained by upstream Linux, CachyOS, Ubuntu, or Arch.
+*   🔄 **Always keep a fallback kernel:** Do not remove your working kernel until you've confirmed the new one boots, runs correctly, and handles all your hardware.
 
-## 📜 Upstream Sources & Credits
-This script integrates patches, configuration baselines, and packaging conventions from:
-- [CachyOS Linux Kernel](https://github.com/CachyOS/linux-cachyos)
-- [CachyOS Kernel Patches](https://github.com/cachyos/kernel-patches)
-- Arch Linux `linux` PKGBUILD packaging standards
-- Debian `linux-image` maintainer script policies
+---
 
-All upstream code remains under its original licenses. This script is provided as-is for educational and personal use.
+## 🐛 Reporting Issues (READ THIS FIRST)
+**⚠️ IMPORTANT:** Please open an issue **ONLY** at this repository:  
+ **[https://github.com/Autisticestradioluser/Build-CachyOS-Kernel-On-Ubuntu/issues](https://github.com/Autisticestradioluser/Build-CachyOS-Kernel-On-Ubuntu/issues)**
 
-## ⚠️ Disclaimer
-This script compiles and installs a custom Linux kernel. Improper use may result in an unbootable system. Always:
-- Keep a known-working kernel installed
-- Verify source integrity before building
-- Test new kernels in a non-critical environment first
-- Back up important data before installation
+**🚫 Do NOT report issues to:**
+*   CachyOS (they do not maintain this script)
+*   Upstream Linux Kernel repositories (this script is not supported there)
+*   Ubuntu or Arch Linux bug trackers
 
-**Use at your own risk. No warranty is provided.**
+When reporting, please include:
+*   Your exact distro version (`lsb_release -a`)
+*   The full command you ran (including all environment variables)
+*   Complete terminal output or error logs
+*   `uname -a` before building
+*   What you expected to happen vs. what actually happened
+
+*(Reminder: If you have a bug, report it here only. Do not bother upstream projects.)*
+
+---
+
+## 📜 Credits & Upstream Sources
+This script builds on work from:
+*   [CachyOS Linux Kernel](https://github.com/CachyOS/linux-cachyos)
+*   [CachyOS Kernel Patches](https://github.com/cachyos/kernel-patches)
+*   Arch Linux packaging standards
+*   Debian `linux-image` maintainer script policies
+
+All upstream code remains under its original licenses.
+
+---
+
+## 📝 Final Note
+This tool is meant to be transparent, predictable, and easy to control. If something breaks, check your config, verify your hardware support, and fall back to your known-working kernel. Use it carefully, test it safely, and never trust automation blindly.
+
+**Remember:** If you find a bug, report it **only** at [this repository's issue tracker](https://github.com/Autisticestradioluser/Build-CachyOS-Kernel-On-Ubuntu/issues).
