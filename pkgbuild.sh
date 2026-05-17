@@ -47,7 +47,7 @@ _build_deb=${_build_deb:-yes}            # yes = build Debian .deb
 
 # Kernel version info
 _major=7.0
-_minor=7
+_minor=8
 _tagrel=1
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
@@ -56,7 +56,7 @@ _srcver=${_major}.${_minor}-${_tagrel}
 _srcname=cachyos-${_srcver}
 
 # Checksums (Update per release)
-_kernel_b2sum=${_kernel_b2sum:-5ccbf60f1868bcec6453d4343e606ec80ca74a53aae1b1472876b9667bc0407cece06b71b67e495edbe1f5ca05a24873abcb7148a028bfb33177fdf82931092f}
+_kernel_b2sum=${_kernel_b2sum:-058e3f3b3d69d937318757cc128e76fba22690e8dd7ff4d8ec34e625c430d214669e94857b5e45f74d0e16ec2f4278fde58b917443e3a795426f195d564ead3a}
 _config_b2sum=${_config_b2sum:-7bb5113dbc67e8e2ce5c5473ae1b08973af5adba0a6a14c64a213bb116e5a172d40b7c274b85ad15553511484ee1f120e0372251e242c6f87ce6920235f0c136}
 
 _patchsource="https://raw.githubusercontent.com/cachyos/kernel-patches/master/${_major}"
@@ -389,11 +389,11 @@ fallback_image="/boot/initramfs-${KERNEL_VERSION}-fallback.img"
 fallback_options="-S autodetect"
 EOF
 
-    # Arch pkgver cannot contain hyphens. Convert to dots, append pkgrel.
+    # Arch pkgver: hyphens become dots, pkgrel appended after final hyphen
     PACMAN_PKGVER="${KERNEL_VERSION//-/.}-${pkgrel}"
     PKG_IMG_FILENAME="linux-cachyos-${_cpusched}-${PACMAN_PKGVER}-x86_64.pkg.tar.zst"
 
-    # Strict Arch metadata format
+    # Strict Arch PKGINFO format (one depends per line, mandatory license)
     cat > "${ARCH_IMG}/.PKGINFO" << EOF
 pkgname = linux-cachyos-${_cpusched}
 pkgbase = linux-cachyos
@@ -470,10 +470,8 @@ if [[ "$_build_deb" == "yes" ]]; then
         cp -a "${INSTALL_DIR}/lib/modules/${KERNEL_VERSION}" "${DEB_IMG}/lib/modules/"
     fi
 
-    # Clean staging artifacts to prevent dpkg "Directory not empty" warnings
-    find "${DEB_IMG}/lib/modules/${KERNEL_VERSION}" \( -name ".fresh-install" -o -name ".keep" -o -name ".empty" \) -delete 2>/dev/null || true
-
-    # Debian versioning: KERNEL_VERSION already includes pkgrel, so we use it directly.
+    # Debian version: KERNEL_VERSION already includes pkgrel from localversion.10-pkgrel
+    # Do NOT append pkgrel again (prevents double-revision like 7.0.7-1-1)
     cat > "${DEB_IMG}/DEBIAN/control" << EOF
 Package: linux-image-cachyos-${_cpusched}
 Version: ${KERNEL_VERSION}
@@ -483,35 +481,39 @@ Maintainer: GitHub User
 Architecture: amd64
 Depends: initramfs-tools (>= 0.125), linux-base (>= 4.0~)
 Description: ${DESC}
- CachyOS-optimized Linux kernel for Debian/Ubuntu. Includes zstd modules,
+ CachyOS-patched Linux kernel for Debian/Ubuntu. Includes zstd modules,
  BBRv3, and optimized scheduling/preemption.
 EOF
     [[ "$_build_r8125" == "yes" ]] && echo "Conflicts: r8169-dkms" >> "${DEB_IMG}/DEBIAN/control"
 
     version="${KERNEL_VERSION}"
+    image_path="/boot/vmlinuz-${version}"
 
-    # prerm
-    cat > "${DEB_IMG}/DEBIAN/prerm" << EOF
+    # preinst
+    cat > "${DEB_IMG}/DEBIAN/preinst" << EOF
 #!/bin/sh
 set -e
 version='${version}'
-if [ "\$1" != "remove" ]; then exit 0; fi
-if command -v linux-check-removal >/dev/null 2>&1; then
-    linux-check-removal "\$version" || true
+image_path='${image_path}'
+if [ "\$1" = abort-upgrade ]; then exit 0; fi
+if [ "\$1" = install ]; then
+    mkdir -p /lib/modules/\$version
+    touch /lib/modules/\$version/.fresh-install
 fi
-if command -v update-initramfs >/dev/null 2>&1; then
-    update-initramfs -d -k "\$version" 2>/dev/null || true
+if [ -d /etc/kernel/preinst.d ]; then
+    DEB_MAINT_PARAMS="\$*" run-parts --report --exit-on-error --arg=\$version --arg=\$image_path /etc/kernel/preinst.d
 fi
 exit 0
 EOF
-    chmod +x "${DEB_IMG}/DEBIAN/prerm"
+    chmod +x "${DEB_IMG}/DEBIAN/preinst"
 
-    # postinst
+    # postinst (Debian Policy §10.3)
     cat > "${DEB_IMG}/DEBIAN/postinst" << EOF
 #!/bin/sh
 set -e
 version='${version}'
-if [ "\$1" != "configure" ]; then exit 0; fi
+image_path='${image_path}'
+if [ "\$1" != configure ]; then exit 0; fi
 depmod "\$version"
 if command -v update-initramfs >/dev/null 2>&1; then
     update-initramfs -c -k "\$version" 2>/dev/null || update-initramfs -u -k "\$version"
@@ -523,14 +525,32 @@ exit 0
 EOF
     chmod +x "${DEB_IMG}/DEBIAN/postinst"
 
-    # postrm (Purge) - Standard Debian kernel practice to prevent directory warnings
+    # prerm (Debian Policy §10.3)
+    cat > "${DEB_IMG}/DEBIAN/prerm" << EOF
+#!/bin/sh
+set -e
+version='${version}'
+image_path='${image_path}'
+if [ "\$1" != remove ]; then exit 0; fi
+if command -v linux-check-removal >/dev/null 2>&1; then
+    linux-check-removal "\$version" || true
+fi
+if command -v update-initramfs >/dev/null 2>&1; then
+    update-initramfs -d -k "\$version" 2>/dev/null || true
+fi
+exit 0
+EOF
+    chmod +x "${DEB_IMG}/DEBIAN/prerm"
+
+    # postrm (Debian Policy §10.3) - Use rm -rf on purge to prevent "Directory not empty"
     cat > "${DEB_IMG}/DEBIAN/postrm" << EOF
 #!/bin/sh
 set -e
 version='${version}'
-if [ "\$1" = "purge" ]; then
+image_path='${image_path}'
+if [ "\$1" = purge ]; then
     moddir="/lib/modules/\$version"
-    # Only remove if not currently running
+    # Only remove if not currently running kernel
     if [ -d "\$moddir" ] && [ "\$(uname -r)" != "\$version" ]; then
         rm -rf "\$moddir" 2>/dev/null || true
     fi
@@ -542,6 +562,7 @@ exit 0
 EOF
     chmod +x "${DEB_IMG}/DEBIAN/postrm"
 
+    # Use --root-owner-group for proper ownership in archive
     dpkg-deb --root-owner-group -b "${DEB_IMG}" "${BUILD_DIR}/linux-image-cachyos-${_cpusched}_${KERNEL_VERSION}_amd64.deb"
     print_success "Debian image: ${BUILD_DIR}/linux-image-cachyos-${_cpusched}_${KERNEL_VERSION}_amd64.deb"
     DEB_PKG="${BUILD_DIR}/linux-image-cachyos-${_cpusched}_${KERNEL_VERSION}_amd64.deb"
@@ -576,8 +597,9 @@ print_step "Step 11: Verification & Summary"
 print_warning "The kernel has been built successfully!"
 echo "=========================================="
 if [[ "$_build_archpkg" == "yes" ]]; then
-    echo " Arch Image:   sudo pacman -U ${BUILD_DIR}/${PKG_IMG_FILENAME}"
-    [[ "$_build_debug" == "yes" ]] && echo " Arch Headers: sudo pacman -U ${BUILD_DIR}/${PKG_HDR_FILENAME}"
+    PACMAN_PKGVER="${KERNEL_VERSION//-/.}-${pkgrel}"
+    echo " Arch Image:   sudo pacman -U ${BUILD_DIR}/linux-cachyos-${_cpusched}-${PACMAN_PKGVER}-x86_64.pkg.tar.zst"
+    [[ "$_build_debug" == "yes" ]] && echo " Arch Headers: sudo pacman -U ${BUILD_DIR}/linux-cachyos-${_cpusched}-headers-${PACMAN_PKGVER}-x86_64.pkg.tar.zst"
 fi
 if [[ "$_build_deb" == "yes" ]]; then
     echo " Debian Image: sudo dpkg -i ${DEB_PKG}"
