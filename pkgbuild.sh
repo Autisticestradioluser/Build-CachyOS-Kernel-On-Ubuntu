@@ -18,97 +18,173 @@ print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 print_step() { echo -e "\n${GREEN}==>${NC} ${YELLOW}$1${NC}"; }
 
-# Build configuration - matching PKGBUILD defaults
+# Build configuration - matching upstream PKGBUILD defaults
+# Selecting CachyOS config
 _cachy_config=${_cachy_config:-yes}
-# CPU scheduler: bore, bmq, hardened, cachyos, eevdf, rt, rt-bore
-# bore is better for interactive apps but is an unfair scheduler which can introduce instability for VMs hosted with BORE on the host (BORE on VMs seems okay)
-# use EEVDF for VM hosts
-_cpusched=${_cpusched:-bore}
-# Tweak config with nconfig/xconfig
+
+# Selecting the CPU scheduler
+# ATTENTION - only one of the following values can be selected:
+# 'bore' - select 'Burst-Oriented Response Enhancer'
+# 'bmq' - select 'BMQ Scheduler'
+# 'hardened' - select 'BORE Scheduler hardened'
+# 'cachyos' - select 'CachyOS Default Scheduler (EEVDF)'
+# 'eevdf' - select 'EEVDF Scheduler'
+# 'rt' - select EEVDF, but includes a series of realtime patches
+# 'rt-bore' - select Burst-Oriented Response Enhancer, but includes a series of realtime patches
+_cpusched=${_cpusched:-cachyos}
+
+# Tweak kernel options prior to a build via nconfig
 _makenconfig=${_makenconfig:-no}
 _makexconfig=${_makexconfig:-no}
-# Build only used modules (requires modprobed.db)
+
+# Compile ONLY used modules to VASTLY reduce the number of modules built
+# To keep track of which modules are needed for your specific system/hardware,
+# give module_db script a try: https://aur.archlinux.org/packages/modprobed-db
 _localmodcfg=${_localmodcfg:-no}
 _localmodcfg_path=${_localmodcfg_path:-"$HOME/.config/modprobed.db"}
-# Use current kernel config
+
+# Use the current kernel's .config file
 _use_current=${_use_current:-no}
-# Compiler optimizations: -O3
+
+# Enable KBUILD_CFLAGS -O3
 _cc_harder=${_cc_harder:-yes}
-# Default performance governor
-_per_gov=${_per_gov:-yes}
-# Enable TCP_CONG_BBR3 for bbrv3
-_tcp_bbr3=${_tcp_bbr3:-yes}
-# 100, 250, 300, 500, 600, 750, 1000
+
+# Set performance governor as default
+_per_gov=${_per_gov:-no}
+
+# Enable TCP_CONG_BBR3
+_tcp_bbr3=${_tcp_bbr3:-no}
+
+# Running with a 1000HZ, 750Hz, 600 Hz, 500Hz, 300Hz, 250Hz and 100Hz tick rate
 _HZ_ticks=${_HZ_ticks:-1000}
-# periodic, idle, full
+
+# Choose between periodic, idle or full
 _tickrate=${_tickrate:-full}
-# Preempt: full, lazy, voluntary, none
+
+# Choose between full or lazy
+# Full: Makes all non-critical kernel code preemptible to reduce latency
+# Lazy: Same as full but instead of preempting immediately it waits for signals from the scheduler
 _preempt=${_preempt:-full}
-# Transparent Hugepages: always, madvise
+
+# Transparent Hugepages
+# 'always' - always enable THP
+# 'madvise' - madvise, prevent applications from allocating more memory resources than necessary
 _hugepage=${_hugepage:-always}
-# CPU optimization: native, zen4, generic_v[1-4]
-_processor_opt=${_processor_opt:-native}
-# LLVM LTO: none, thin, full, thin-dist
-# use zram-generator and make a zstd zram device with zram = ram * 4 if you have at least 8 GB RAM to build with full LTO
-_use_llvm_lto=${_use_llvm_lto:-full}
-# Use -lto suffix
-_use_lto_suffix=${_use_lto_suffix:-yes}
-# Use -gcc suffix
-_use_gcc_suffix=${_use_gcc_suffix:-no}
-# Enable KCFI
+
+# CPU compiler optimizations - Defaults to native if left empty
+# - "native" (use compiler autodetection)
+# - "zen4" (Use znver4 compiler optimizations)
+# - "generic" (kernel's default)
+_processor_opt=${_processor_opt:-}
+
+# Clang LTO mode - options are "none", "full", "thin", or "thin-dist"
+# "thin: uses multiple threads, faster and uses less memory"
+# "full: uses 1 thread for Linking, slow and uses more memory"
+# "thin-dist: Similar to thin, but uses a distributed model"
+_use_llvm_lto=${_use_llvm_lto:-thin}
+
+# Use suffix -lto only when requested by the user
+_use_lto_suffix=${_use_lto_suffix:-no}
+
+# Use suffix -gcc when requested by the user
+_use_gcc_suffix=${_use_gcc_suffix:-yes}
+
+# KCFI - forward-edge control-flow integrity scheme for Clang
 _use_kcfi=${_use_kcfi:-no}
-# Build ZFS module (NOT compatible with RT schedulers)
+
+# Build the zfs module into the kernel
+# WARNING: The ZFS module doesn't build with selected RT sched due to licensing issues
 _build_zfs=${_build_zfs:-no}
-# Build proprietary NVIDIA module (REPLACES nvidia-dkms)
-_build_nvidia=${_build_nvidia:-no}
-# Build proprietary NVIDIA modules but no kernel headers
-_build_nvidia_min=${_build_nvidia_min:-no}
-# Build open NVIDIA module (Turing+ only)
+
+# Builds the open nvidia module (Turing+ GPU only)
+# This replaces the requirement of nvidia-open-dkms
 _build_nvidia_open=${_build_nvidia_open:-no}
-# Build open NVIDIA module (Turing+) but no kernel headers
-_build_nvidia_open_min=${_build_nvidia_open_min:-no}
-# build with headers (without requiring nvidia)
+
+# Builds the r8125 module and package it into its own package
+# Replaces requirement for r8125-dkms
+_build_r8125=${_build_r8125:-no}
+
+# Build a debug package with non-stripped vmlinux
 _build_debug=${_build_debug:-no}
-# AutoFDO
+
+# Enable AUTOFDO_CLANG for profiling
+# Workflow: https://cachyos.org/blog/2411-kernel-autofdo/
 _autofdo=${_autofdo:-no}
 _autofdo_profile_name=${_autofdo_profile_name:-}
-# Propeller
+
+# Propeller optimization (should be applied after AutoFDO)
 _propeller=${_propeller:-no}
 _propeller_profiles=${_propeller_profiles:-no}
-# build mkinitcpio.d preset for arch users, valid opts: 'no', 'yes', 'ext': yes (included in package for distros that use mkinitcpio such as Arch), or 'ext' external (placed inside build dir where the resulting .tar.zst for kernel will be so you can use it on Arch too)
-# WORK IN PROGRESS: 'yes' here should build you a package to install on Arch, but we don't currently make metadata to do this
-_build_mkinitcpiod_preset=${_build_mkinitcpiod_preset:-yes}
-# Build deb package for debian/ubuntu
-_build_deb=${_build_deb:-yes}
 
-# Kernel version info
-_major=6.18
-_minor=5
-#_rcver=rc7
+# ATTENTION: Do not modify after this line
+_is_lto_kernel() {
+    [[ "$_use_llvm_lto" = "thin" || "$_use_llvm_lto" = "full"  || "$_use_llvm_lto" = "thin-dist" ]]
+    return $?
+}
+
+# Kernel version info - Updated to match upstream CachyOS 7.0.8
+_major=7.0
+_minor=8
 pkgver=${_major}.${_minor}
-#pkgver=${_major}.${_rcver}
-#_stable=${_major}-${_rcver}
-#_stable=${_major}
-_stable=${_major}.${_minor}
-_srcname=linux-${_stable}
-# Put a verison in here that is higher than your previous one
+_tagrel=1
 pkgrel=1
+_srcname=cachyos-${_major}.${_minor}-${_tagrel}
+_stable=${_major}.${_minor}
+pkgbase="linux-cachyos"
 
-# NVIDIA driver version, 580.119.02 is latest for maxwell-pascal vs 590.44.01 beta is turing+ but nvidia-open is better for that while maxwell-pascal need 580-series proprietary drivers
-_nv_ver=580.119.02
+# NVIDIA driver version - Updated to match upstream
+_nv_ver=595.71.05
 _nv_pkg="NVIDIA-Linux-x86_64-${_nv_ver}"
-_nv_open_ver=590.48.01
-_nv_open_pkg="NVIDIA-kernel-module-source-${_nv_open_ver}"
-
-# b2sums, expected to change with each release, current 6.18.5 b2sums
-_kernel_b2sum=9294ae977d7b8b929c476e649cbb116969a674d3923e5a4cddf8615ee5ba373761630f1a6397045d9ebe7eeaa87a3fffae3628aebc1ca4c7db5561b1c4513289
-_config_b2sum=81fafd3adcaf3b690d8d4791693e68c7ae921d103ebfd70e8d0ae15cd05ecde5e6672ae43c3a7875686d883c1f5b82d2c8b37b40aee8dcb0563913f9dd6469b6
-_cachy_base_patch_b2sum=84b3aea4df9b05f25b21ae51157f5897ad8698879ec7140ba96505ca2e559281d2588e71c0e7d8f15b8525188d58650a2eb53dce58f5780c90cc32d858046909
-_dkms_clang_patch_b2sum=c7294a689f70b2a44b0c4e9f00c61dbd59dd7063ecbe18655c4e7f12e21ed7c5bb4f5169f5aa8623b1c59de7b2667facb024913ecb9f4c650dabce4e8a7e5452
-
+_nv_open_pkg="NVIDIA-kernel-module-source-${_nv_ver}"
 
 # Patches source
 _patchsource="https://raw.githubusercontent.com/cachyos/kernel-patches/master/${_major}"
+
+# b2sums for kernel 7.0.8 - updated from upstream CachyOS PKGBUILD
+# These verify the integrity of downloaded sources
+_kernel_b2sum=ffa4da16bbd6313fb85b916a770383df817a43f8e1135f8c4c4a5d29d8cc692e3ecb4f71ecba4bc51173c10f88e8d7a9c159a5ffd6bd21d23382916ffe28b3f6
+_config_b2sum=7bb5113dbc67e8e2ce5c5473ae1b08973af5adba0a6a14c64a213bb116e5a172d40b7c274b85ad15553511484ee1f120e0372251e242c6f87ce6920235f0c136
+_dkms_clang_patch_b2sum=c992567bd7dd8553432be496ffa1c17e2f5ebe9c7edb51945cf977e1b742dd6517c210d8843bb82744ca705efd07f8027cd7dde41b50215ebd707a34aa81462e
+
+# Build source array for patches (similar to PKGBUILD)
+source=(
+    "${_patchsource}/all/0001-cachyos-base-all.patch"
+)
+
+# Add scheduler patches based on configuration
+case "$_cpusched" in
+    bore|rt-bore|hardened)
+        source+=("${_patchsource}/sched/0001-bore-cachy.patch")
+        ;;
+    bmq)
+        source+=("${_patchsource}/sched/0001-prjc-cachy.patch")
+        ;;
+esac
+
+# Add hardened patches if needed
+if [ "$_cpusched" = "hardened" ]; then
+    source+=("${_patchsource}/misc/0001-hardened.patch")
+fi
+
+# Add RT patches if needed
+if [[ "$_cpusched" == "rt" || "$_cpusched" == "rt-bore" ]]; then
+    source+=("${_patchsource}/misc/0001-rt-i915.patch")
+fi
+
+# Add DKMS clang patch if using LTO
+if _is_lto_kernel; then
+    source+=("${_patchsource}/misc/dkms-clang.patch")
+fi
+
+# Add NVIDIA open driver patches if needed
+if [ "$_build_nvidia_open" = "yes" ]; then
+    source+=(
+        "${_patchsource}/misc/nvidia/0002-Add-IBT-support.patch"
+        "${_patchsource}/misc/nvidia/0003-fix-dsc-correct-RC-parameter-tables-to-match-VESA-DS.patch"
+        "${_patchsource}/misc/nvidia/0004-fix-dsc-use-bits_per_component-for-flatnessDetThresh.patch"
+        "${_patchsource}/misc/nvidia/0005-fix-dp-add-Bigscreen-Beyond-VR-headset-to-WAR-databa.patch"
+    )
+fi
 
 # Build directory
 BUILD_DIR="${PWD}/linux-cachyos-${_cpusched}-${_stable}-${pkgrel}-${_processor_opt}"
@@ -258,74 +334,55 @@ mkdir -p "${DOWNLOAD_DIR}"
 cd "${BUILD_DIR}"
 
 print_step "Step 4: Downloading Kernel Sources and Patches"
-print_info "Downloading Linux kernel ${_stable}..."
-    if [[ -n "$_rcver" || "$_minor" = "0" ]]; then
-        if [ ! -f "${DOWNLOAD_DIR}/v${_stable}.tar.gz" ]; then
-        print_info "Downloading a kernel from github"
-        wget -P "${DOWNLOAD_DIR}" "https://github.com/torvalds/linux/archive/refs/tags/v${_stable}.tar.gz"
-        else
-        print_info "Kernel source already downloaded"
-        fi
+print_info "Downloading CachyOS kernel ${_srcname}..."
+
+# Download the pre-packaged CachyOS kernel source
+if [ ! -f "${DOWNLOAD_DIR}/${_srcname}.tar.gz" ]; then
+    print_info "Downloading CachyOS kernel release from GitHub..."
+    wget -P "${DOWNLOAD_DIR}" "https://github.com/CachyOS/linux/releases/download/${_srcname}/${_srcname}.tar.gz"
+    # Verify b2sum
+    if [[ "$(b2sum ${DOWNLOAD_DIR}/${_srcname}.tar.gz | cut -d' ' -f1)" == $_kernel_b2sum ]]; then
+        echo "✅  Kernel b2sum matches"
+    else
+        echo "❌  Kernel b2sum mismatch"
+        exit 1
     fi
-    if [[ "$_minor" -gt 0 ]]; then
-        if [ ! -f "${DOWNLOAD_DIR}/${_srcname}.tar.xz" ]; then
-        print_info "Downloading a stable kernel from the Linux Foundation CDN"
-        wget -P "${DOWNLOAD_DIR}" "https://cdn.kernel.org/pub/linux/kernel/v${pkgver%%.*}.x/${_srcname}.tar.xz"
-        if [[ "$(b2sum ${DOWNLOAD_DIR}/${_srcname}.tar.xz | cut -d' ' -f1)" == $_kernel_b2sum ]]; then
+else
+    print_info "Kernel source already downloaded"
+    # Verify b2sum
+    if [[ "$(b2sum ${DOWNLOAD_DIR}/${_srcname}.tar.gz | cut -d' ' -f1)" == $_kernel_b2sum ]]; then
         echo "✅  Kernel b2sum matches"
-        else
+    else
         echo "❌  Kernel b2sum mismatch"
         exit 1
-        fi
-        else
-        print_info "Kernel source already downloaded"
-        if [[ "$(b2sum ${DOWNLOAD_DIR}/${_srcname}.tar.xz | cut -d' ' -f1)" == $_kernel_b2sum ]]; then
-        echo "✅  Kernel b2sum matches"
-        else
-        echo "❌  Kernel b2sum mismatch"
-        exit 1
-        fi
     fi
 fi
 
-# Check and download CachyOS config
+# Extract to get the config file reference
+print_info "Extracting temporary copy to access config..."
+cd "${DOWNLOAD_DIR}"
+tar -xf "${_srcname}.tar.gz" --wildcards "${_srcname}/config" --strip-components=1 2>/dev/null || true
+cd "${BUILD_DIR}"
+
+# Check and download CachyOS config separately if needed
 if [ ! -f "${DOWNLOAD_DIR}/config" ]; then
     print_info "Downloading CachyOS config..."
     wget -O "${DOWNLOAD_DIR}/config" "https://raw.githubusercontent.com/CachyOS/linux-cachyos/refs/heads/master/linux-cachyos/config"
-        if [[ "$(b2sum ${DOWNLOAD_DIR}/config | cut -d' ' -f1)" == $_config_b2sum ]]; then
+    # Verify b2sum
+    if [[ "$(b2sum ${DOWNLOAD_DIR}/config | cut -d' ' -f1)" == $_config_b2sum ]]; then
         echo "✅  Config b2sum matches"
-        else
+    else
         echo "❌  Config b2sum mismatch"
         exit 1
-        fi
-    else
-    echo "Config already downloaded"
-        if [[ "$(b2sum ${DOWNLOAD_DIR}/config | cut -d' ' -f1)" == $_config_b2sum ]]; then
+    fi
+else
+    # Verify b2sum
+    if [[ "$(b2sum ${DOWNLOAD_DIR}/config | cut -d' ' -f1)" == $_config_b2sum ]]; then
         echo "✅  Config b2sum matches"
-        else
+    else
         echo "❌  Config b2sum mismatch"
         exit 1
-        fi
-fi
-
-# Check and download CachyOS base patches
-if [ ! -f "${DOWNLOAD_DIR}/0001-cachyos-base-all.patch" ]; then
-    print_info "Downloading CachyOS base patches..."
-    wget -P "${DOWNLOAD_DIR}" "${_patchsource}/all/0001-cachyos-base-all.patch"
-        if [[ "$(b2sum ${DOWNLOAD_DIR}/0001-cachyos-base-all.patch | cut -d' ' -f1)" == $_cachy_base_patch_b2sum ]]; then
-        echo "✅  CachyOS base patch b2sum matches"
-        else
-        echo "❌  CachyOS base patch b2sum mismatch"
-        exit 1
-        fi
-    else
-    echo "Already download CachyOS base patch"
-        if [[ "$(b2sum ${DOWNLOAD_DIR}/0001-cachyos-base-all.patch | cut -d' ' -f1)" == $_cachy_base_patch_b2sum ]]; then
-        echo "✅  CachyOS base patch b2sum matches"
-        else
-        echo "❌  CachyOS base patch b2sum mismatch"
-        exit 1
-        fi
+    fi
 fi
 
 # Download scheduler patches
@@ -354,43 +411,33 @@ if [[ "$_cpusched" == "rt" || "$_cpusched" == "rt-bore" ]]; then
 fi
 
 # Download LLVM DKMS patch if using LTO
-if [[ "$_use_llvm_lto" == "thin" || "$_use_llvm_lto" == "full" || "$_use_llvm_lto" == "thin-dist" ]]; then
+if _is_lto_kernel; then
     if [ ! -f "${DOWNLOAD_DIR}/dkms-clang.patch" ]; then
         print_info "Downloading LLVM DKMS patch..."
         wget -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/dkms-clang.patch"
+        # Verify b2sum
         if [[ "$(b2sum ${DOWNLOAD_DIR}/dkms-clang.patch | cut -d' ' -f1)" == $_dkms_clang_patch_b2sum ]]; then
-        echo "✅  dkms clang patch b2sum matches"
+            echo "✅  dkms clang patch b2sum matches"
         else
-        echo "❌  dkms clang patch b2sum mismatch"
-        exit 1
+            echo "❌  dkms clang patch b2sum mismatch"
+            exit 1
         fi
     else
-    echo "Already downloaded dkms clang patch"
+        # Verify b2sum
         if [[ "$(b2sum ${DOWNLOAD_DIR}/dkms-clang.patch | cut -d' ' -f1)" == $_dkms_clang_patch_b2sum ]]; then
-        echo "✅  dkms clang patch b2sum matches"
+            echo "✅  dkms clang patch b2sum matches"
         else
-        echo "❌  dkms clang patch b2sum mismatch"
-        exit 1
+            echo "❌  dkms clang patch b2sum mismatch"
+            exit 1
         fi
     fi
 fi
 
-# Download NVIDIA driver if needed
-if [[ "$_build_nvidia" == "yes" || "$_build_nvidia_min" == "yes" ]]; then
-    print_info "Downloading NVIDIA driver ${_nv_ver}..."
-    if [ ! -f "${DOWNLOAD_DIR}/${_nv_pkg}.run" ]; then
-        wget -P "${DOWNLOAD_DIR}" "https://us.download.nvidia.com/XFree86/Linux-x86_64/${_nv_ver}/${_nv_pkg}.run"
-    fi
-    # Check if patch file exists before downloading
-    if [ ! -f "${DOWNLOAD_DIR}/0001-Enable-atomic-kernel-modesetting-by-default.patch" ]; then
-        wget -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/nvidia/0001-Enable-atomic-kernel-modesetting-by-default.patch"
-    fi
-fi
-
-if [[ "$_build_nvidia_open" == "yes" || "$_build_nvidia_open_min" == "yes" ]]; then
-    print_info "Downloading NVIDIA open driver ${_nv_open_ver}..."
+# Download NVIDIA open driver patches if needed
+if [ "$_build_nvidia_open" = "yes" ]; then
+    print_info "Downloading NVIDIA open driver ${_nv_ver}..."
     if [ ! -f "${DOWNLOAD_DIR}/${_nv_open_pkg}.tar.xz" ]; then
-        wget -P "${DOWNLOAD_DIR}" "https://download.nvidia.com/XFree86/${_nv_open_pkg%"-$_nv_open_ver"}/${_nv_open_pkg}.tar.xz"
+        wget -P "${DOWNLOAD_DIR}" "https://download.nvidia.com/XFree86/${_nv_open_pkg%"-$_nv_ver"}/${_nv_open_pkg}.tar.xz"
     fi
 
     # Patch 1
@@ -404,61 +451,69 @@ if [[ "$_build_nvidia_open" == "yes" || "$_build_nvidia_open_min" == "yes" ]]; t
         print_info "Downloading NVIDIA open driver patch: Add IBT support"
         wget -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/nvidia/0002-Add-IBT-support.patch"
     fi
+    
+    # Patch 3
+    if [ ! -f "${DOWNLOAD_DIR}/0003-fix-dsc-correct-RC-parameter-tables-to-match-VESA-DS.patch" ]; then
+        print_info "Downloading NVIDIA open driver patch: Fix DSC RC parameter tables"
+        wget -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/nvidia/0003-fix-dsc-correct-RC-parameter-tables-to-match-VESA-DS.patch"
+    fi
+    
+    # Patch 4
+    if [ ! -f "${DOWNLOAD_DIR}/0004-fix-dsc-use-bits_per_component-for-flatnessDetThresh.patch" ]; then
+        print_info "Downloading NVIDIA open driver patch: Fix DSC bits_per_component"
+        wget -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/nvidia/0004-fix-dsc-use-bits_per_component-for-flatnessDetThresh.patch"
+    fi
+    
+    # Patch 5
+    if [ ! -f "${DOWNLOAD_DIR}/0005-fix-dp-add-Bigscreen-Beyond-VR-headset-to-WAR-databa.patch" ]; then
+        print_info "Downloading NVIDIA open driver patch: Add Bigscreen Beyond VR headset to WAR database"
+        wget -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/nvidia/0005-fix-dp-add-Bigscreen-Beyond-VR-headset-to-WAR-databa.patch"
+    fi
 fi
+
 # Clone ZFS if needed
 if [ "$_build_zfs" = "yes" ]; then
     print_info "Cloning ZFS repository..."
     if [ ! -d "${SRC_DIR}/zfs" ]; then
-        git clone --revision=743334913e5a5f60baf287bcc6d8a23515b02ac5 --depth=1 https://github.com/cachyos/zfs.git "${SRC_DIR}/zfs"
+        git clone --revision=6330a45b06d20125de679aae5f63ba14082671ef --depth=1 https://github.com/cachyos/zfs.git "${SRC_DIR}/zfs"
+        cd "${BUILD_DIR}"
+    fi
+fi
+
+# Clone r8125 if needed
+if [ "$_build_r8125" = "yes" ]; then
+    print_info "Cloning r8125 repository..."
+    if [ ! -d "${SRC_DIR}/r8125" ]; then
+        git clone --depth=1 https://github.com/aravance/r8125.git "${SRC_DIR}/r8125"
         cd "${BUILD_DIR}"
     fi
 fi
 
 print_step "Step 5: Extracting and Preparing Sources"
-print_info "Extracting kernel source..."
+print_info "Extracting CachyOS kernel source..."
 cd "${SRC_DIR}"
-if [[ -n "$_rcver" ]]; then
-    tar -xf "${DOWNLOAD_DIR}/v${_stable}.tar.gz"
-else
-    tar -xf "${DOWNLOAD_DIR}/linux-${_stable}.tar.xz"
-fi
+tar -xf "${DOWNLOAD_DIR}/${_srcname}.tar.gz"
 cd "${_srcname}"
 
 print_info "Setting kernel version..."
 echo "-$pkgrel" > localversion.10-pkgrel
-echo "-cachyos" > localversion.20-pkgname
+echo "${pkgbase#linux}" > localversion.20-pkgname 2>/dev/null || echo "cachyos" > localversion.20-pkgname
 
 print_step "Step 6: Applying Patches"
-print_info "Applying CachyOS base patches..."
-patch -Np1 < "${DOWNLOAD_DIR}/0001-cachyos-base-all.patch"
-
-# Apply DKMS clang patch if using LTO
-if [[ "$_use_llvm_lto" == "thin" || "$_use_llvm_lto" == "full" || "$_use_llvm_lto" == "thin-dist" ]]; then
-    print_info "Applying DKMS Clang patch..."
-    patch -Np1 < "${DOWNLOAD_DIR}/dkms-clang.patch"
-fi
-
-# Apply scheduler patches
-case "$_cpusched" in
-    cachyos|bore|rt-bore|hardened)
-        print_info "Applying BORE scheduler patch..."
-        patch -Np1 < "${DOWNLOAD_DIR}/0001-bore-cachy.patch"
-        ;;
-    bmq)
-        print_info "Applying BMQ scheduler patch..."
-        patch -Np1 < "${DOWNLOAD_DIR}/0001-prjc-cachy.patch"
-        ;;
-esac
-
-if [ "$_cpusched" = "hardened" ]; then
-    print_info "Applying hardened patches..."
-    patch -Np1 < "${DOWNLOAD_DIR}/0001-hardened.patch"
-fi
-
-if [[ "$_cpusched" == "rt" || "$_cpusched" == "rt-bore" ]]; then
-    print_info "Applying RT patches..."
-    patch -Np1 < "${DOWNLOAD_DIR}/0001-rt-i915.patch"
-fi
+# Apply patches from the source array (similar to PKGBUILD prepare function)
+local src
+for patch in "${source[@]}"; do
+    patch="${patch%%::*}"
+    src="${patch##*/}"
+    src="${src%.zst}"
+    [[ $src = *.patch ]] || continue
+    echo "Applying patch $src..."
+    if [[ "$patch" == "${_patchsource}"/misc/nvidia/* ]]; then
+        patch -Np1 < "../$src" -d "${srcdir}/${_nv_open_pkg}"
+    else
+        patch -Np1 < "../$src"
+    fi
+done
 
 print_step "Step 7: Configuring Kernel"
 print_info "Copying CachyOS config..."
