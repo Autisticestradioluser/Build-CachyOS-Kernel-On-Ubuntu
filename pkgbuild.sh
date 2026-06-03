@@ -47,17 +47,23 @@ _build_deb=${_build_deb:-yes}            # yes = build Debian .deb
 
 # Kernel version info
 _major=7.0
-_minor=10
-_tagrel=2
+_minor=11
+_tagrel=1
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
-pkgrel=2
+pkgrel=1
 _srcver=${_major}.${_minor}-${_tagrel}
 _srcname=cachyos-${_srcver}
 
 # Checksums (Update per release)
-_kernel_b2sum=${_kernel_b2sum:-299e4476751b4c5caa6a34824ef017fb638f5eff811057058118fae70bda4cedbd7e856da5436f0cc32a3a73a27676f9340186b2aad324f7474edf6db73ce66a}
+_kernel_b2sum=${_kernel_b2sum:-e37b762176e39b36bb607bd34817ed1579055c4c59edfabd377064ac8321503d0cdad6777aead4eb93f390561ab02a55da02d812a8a42f4785a5061fd1e38fc8}
 _config_b2sum=${_config_b2sum:-7bb5113dbc67e8e2ce5c5473ae1b08973af5adba0a6a14c64a213bb116e5a172d40b7c274b85ad15553511484ee1f120e0372251e242c6f87ce6920235f0c136}
+
+# GPG keys for signature verification
+_validpgpkeys=(
+  E18447AC260021D31F3FF6C4C8A2A4774B8B63C4  # Eric Naim <dnaim@cachyos.org>
+  E8B9AA39F054E30E8290D492C3C4820857F654FE  # Peter Jung <admin@ptr1337.dev>
+)
 
 _patchsource="https://raw.githubusercontent.com/cachyos/kernel-patches/master/${_major}"
 BUILD_DIR="${PWD}/linux-cachyos-${_cpusched}-${_stable}-${pkgrel}-${_processor_opt}"
@@ -142,11 +148,27 @@ mkdir -p "${SRC_DIR}" "${DOWNLOAD_DIR}"
 cd "${BUILD_DIR}"
 
 print_step "Step 4: Downloading Kernel Sources and Patches"
+
+# Import GPG keys
+print_info "Importing CachyOS kernel signing keys..."
+for key in "${_validpgpkeys[@]}"; do
+    gpg --batch --keyserver keyserver.ubuntu.com --recv-keys "$key" 2>/dev/null || \
+    gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$key" 2>/dev/null || true
+done
+
 if [ ! -f "${DOWNLOAD_DIR}/${_srcname}.tar.gz" ]; then
 	print_info "Downloading kernel..."
 	wget -P "${DOWNLOAD_DIR}" "https://github.com/CachyOS/linux/releases/download/${_srcname}/${_srcname}.tar.gz"
 fi
 [[ "$(b2sum "${DOWNLOAD_DIR}/${_srcname}.tar.gz" | cut -d' ' -f1)" == "$_kernel_b2sum" ]] || print_error "Kernel b2sum mismatch"
+
+# Download and verify kernel signature
+if [ ! -f "${DOWNLOAD_DIR}/${_srcname}.tar.gz.sig" ]; then
+	print_info "Downloading kernel signature..."
+	wget -P "${DOWNLOAD_DIR}" "https://github.com/CachyOS/linux/releases/download/${_srcname}/${_srcname}.tar.gz.sig"
+fi
+print_info "Verifying kernel signature..."
+gpg --batch --verify "${DOWNLOAD_DIR}/${_srcname}.tar.gz.sig" "${DOWNLOAD_DIR}/${_srcname}.tar.gz" || print_error "Kernel signature verification failed!"
 
 if [ ! -f "${DOWNLOAD_DIR}/config" ]; then
 	wget -O "${DOWNLOAD_DIR}/config" "https://raw.githubusercontent.com/CachyOS/linux-cachyos/refs/heads/master/linux-cachyos/config"
