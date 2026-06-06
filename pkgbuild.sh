@@ -163,12 +163,12 @@ fi
 [[ "$(b2sum "${DOWNLOAD_DIR}/${_srcname}.tar.gz" | cut -d' ' -f1)" == "$_kernel_b2sum" ]] || print_error "Kernel b2sum mismatch"
 
 # Download and verify kernel signature
-if [ ! -f "${DOWNLOAD_DIR}/${_srcname}.tar.gz.sig" ]; then
+if [ ! -f "${DOWNLOAD_DIR}/${_srcname}.tar.gz.asc" ]; then
 	print_info "Downloading kernel signature..."
-	wget -P "${DOWNLOAD_DIR}" "https://github.com/CachyOS/linux/releases/download/${_srcname}/${_srcname}.tar.gz.sig"
+	wget -P "${DOWNLOAD_DIR}" "https://github.com/CachyOS/linux/releases/download/${_srcname}/${_srcname}.tar.gz.asc"
 fi
 print_info "Verifying kernel signature..."
-gpg --batch --verify "${DOWNLOAD_DIR}/${_srcname}.tar.gz.sig" "${DOWNLOAD_DIR}/${_srcname}.tar.gz" || print_error "Kernel signature verification failed!"
+gpg --batch --verify "${DOWNLOAD_DIR}/${_srcname}.tar.gz.asc" "${DOWNLOAD_DIR}/${_srcname}.tar.gz" || print_error "Kernel signature verification failed!"
 
 if [ ! -f "${DOWNLOAD_DIR}/config" ]; then
 	wget -O "${DOWNLOAD_DIR}/config" "https://raw.githubusercontent.com/CachyOS/linux-cachyos/refs/heads/master/linux-cachyos/config"
