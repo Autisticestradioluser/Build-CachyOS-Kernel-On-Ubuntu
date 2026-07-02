@@ -426,8 +426,8 @@ fallback_image="/boot/initramfs-${KERNEL_VERSION}-fallback.img"
 fallback_options="-S autodetect"
 EOF
 
-    # Implement the .INSTALL Script
-    cat > "${ARCH_IMG}/linux.install" << EOF
+    # Implement the .INSTALL Script (Arch standard name: .INSTALL with leading dot)
+    cat > "${ARCH_IMG}/.INSTALL" << EOF
 post_install() {
     depmod ${KERNEL_VERSION}
 }
@@ -442,9 +442,11 @@ EOF
     # Arch pkgver: hyphens become dots, pkgrel appended after final hyphen
     PACMAN_PKGVER="${KERNEL_VERSION//-/.}-${pkgrel}"
     PKG_IMG_FILENAME="linux-cachyos-${_cpusched}-${PACMAN_PKGVER}-x86_64.pkg.tar.zst"
-    
-    # Calculate size for .PKGINFO
-    PKG_SIZE=$(du -sb "${ARCH_IMG}" | awk '{print $1}')
+
+    # Calculate size for .PKGINFO (installed size only, excluding metadata files)
+    PKG_SIZE=$(find "${ARCH_IMG}" -mindepth 1 -maxdepth 1 \
+        ! -name '.PKGINFO' ! -name '.MTREE' ! -name '.BUILDINFO' ! -name '.INSTALL' \
+        -exec du -sb {} + | awk '{sum+=$1} END {print sum+0}')
 
     # Strict Arch PKGINFO format
     cat > "${ARCH_IMG}/.PKGINFO" << EOF
@@ -460,7 +462,7 @@ arch = x86_64
 license = GPL-2.0-only
 depends = coreutils
 depends = kmod
-install = linux.install
+install = .INSTALL
 EOF
 
     cat > "${ARCH_IMG}/.BUILDINFO" << EOF
@@ -469,23 +471,25 @@ pkgname = linux-cachyos-${_cpusched}
 pkgver = ${PACMAN_PKGVER}
 EOF
 
-    # Correct .MTREE Generation
+    # Correct .MTREE Generation (exclude all metadata files)
     cd "${ARCH_IMG}"
-    find . -mindepth 1 -maxdepth 1 ! -name '.MTREE' ! -name '.PKGINFO' ! -name '.BUILDINFO' ! -name 'linux.install' -print0 | \
+    find . -mindepth 1 -maxdepth 1 ! -name '.MTREE' ! -name '.PKGINFO' ! -name '.BUILDINFO' ! -name '.INSTALL' -print0 | \
         bsdtar -czf .MTREE --format=mtree --options='!gname,!uname' --null -T -
     cd - >/dev/null
 
-    # Enforce Archive Ordering and Ownership
+    # Enforce Archive Ordering and Ownership using piped zstd (bsdtar --zstd not supported on Ubuntu)
+    # Order: .PKGINFO, .MTREE, .BUILDINFO, .INSTALL, then directories/files
     cd "${ARCH_IMG}"
-    bsdtar -cf "${BUILD_DIR}/${PKG_IMG_FILENAME}" \
-        --zstd:compression-level=19 \
+    bsdtar -cf - \
         --owner=root --group=root \
-        .PKGINFO .MTREE .BUILDINFO linux.install \
-        $(find . -mindepth 1 -maxdepth 1 -type d | sort)
+        .PKGINFO .MTREE .BUILDINFO .INSTALL \
+        $(find . -mindepth 1 -maxdepth 1 -type d | sort) \
+        $(find . -mindepth 1 -maxdepth 1 -type f ! -name '.PKGINFO' ! -name '.MTREE' ! -name '.BUILDINFO' ! -name '.INSTALL' | sort) | \
+        zstd -19 -T0 -o "${BUILD_DIR}/${PKG_IMG_FILENAME}"
     cd - >/dev/null
 
     # Final Validation Step
-    if ! bsdtar -tf "${BUILD_DIR}/${PKG_IMG_FILENAME}" | head -n 1 | grep -q ".PKGINFO"; then
+    if ! bsdtar -tf "${BUILD_DIR}/${PKG_IMG_FILENAME}" | head -n 1 | grep -q "^\.PKGINFO$"; then
         print_error "Arch package validation failed: .PKGINFO is not the first file in the archive."
     fi
     print_success "Arch image: ${BUILD_DIR}/${PKG_IMG_FILENAME}"
@@ -495,12 +499,28 @@ EOF
         mkdir -p "${ARCH_HDR}/usr/src" "${ARCH_HDR}/usr/lib/modules/${KERNEL_VERSION}"
         cp -a "${INSTALL_DIR}/usr/src/linux-headers-${KERNEL_VERSION}" "${ARCH_HDR}/usr/src/"
         ln -srf "${ARCH_HDR}/usr/src/linux-headers-${KERNEL_VERSION}" "${ARCH_HDR}/usr/lib/modules/${KERNEL_VERSION}/build"
-        
+
         PKG_HDR_FILENAME="linux-cachyos-${_cpusched}-headers-${PACMAN_PKGVER}-x86_64.pkg.tar.zst"
-        
-        # Calculate size for headers .PKGINFO
-        HDR_PKG_SIZE=$(du -sb "${ARCH_HDR}" | awk '{print $1}')
-        
+
+        # Create .INSTALL script for headers (runs depmod on install/upgrade/remove)
+        cat > "${ARCH_HDR}/.INSTALL" << EOF
+post_install() {
+    depmod ${KERNEL_VERSION}
+}
+post_upgrade() {
+    depmod ${KERNEL_VERSION}
+}
+post_remove() {
+    depmod ${KERNEL_VERSION}
+}
+EOF
+
+        # Calculate size for headers .PKGINFO (exclude metadata files)
+        cd "${ARCH_HDR}"
+        HDR_PKG_SIZE=$(find . -mindepth 1 -maxdepth 1 ! -name '.PKGINFO' ! -name '.MTREE' ! -name '.BUILDINFO' ! -name '.INSTALL' -print0 | \
+            xargs -0 du -sb 2>/dev/null | awk '{sum+=$1} END {print sum+0}')
+        cd - >/dev/null
+
         cat > "${ARCH_HDR}/.PKGINFO" << EOF
 pkgname = linux-cachyos-${_cpusched}-headers
 pkgbase = linux-cachyos
@@ -522,6 +542,7 @@ depends = xxhash
 depends = zlib
 depends = zstd
 depends = linux-cachyos-${_cpusched}=${PACMAN_PKGVER}
+install = .INSTALL
 EOF
 
         cat > "${ARCH_HDR}/.BUILDINFO" << EOF
@@ -530,23 +551,24 @@ pkgname = linux-cachyos-${_cpusched}-headers
 pkgver = ${PACMAN_PKGVER}
 EOF
 
-        # Correct .MTREE Generation for headers
+        # Correct .MTREE Generation for headers (exclude ALL metadata files)
         cd "${ARCH_HDR}"
-        find . -mindepth 1 -maxdepth 1 ! -name '.MTREE' ! -name '.PKGINFO' ! -name '.BUILDINFO' -print0 | \
+        find . -mindepth 1 -maxdepth 1 ! -name '.MTREE' ! -name '.PKGINFO' ! -name '.BUILDINFO' ! -name '.INSTALL' -print0 | \
             bsdtar -czf .MTREE --format=mtree --options='!gname,!uname' --null -T -
         cd - >/dev/null
 
-        # Enforce Archive Ordering and Ownership for headers
+        # Create package using tar | zstd pipeline (replaces unsupported bsdtar --zstd flags)
+        # Order: .PKGINFO first, then .MTREE, .BUILDINFO, .INSTALL, then directories/files
         cd "${ARCH_HDR}"
-        bsdtar -cf "${BUILD_DIR}/${PKG_HDR_FILENAME}" \
-            --zstd:compression-level=19 \
-            --owner=root --group=root \
-            .PKGINFO .MTREE .BUILDINFO \
-            $(find . -mindepth 1 -maxdepth 1 -type d | sort)
+        tar --owner=root --group=root -cf - \
+            .PKGINFO .MTREE .BUILDINFO .INSTALL \
+            $(find . -mindepth 1 -maxdepth 1 -type d | sort) \
+            $(find . -mindepth 1 -maxdepth 1 -type f ! -name '.PKGINFO' ! -name '.MTREE' ! -name '.BUILDINFO' ! -name '.INSTALL' | sort) | \
+            zstd -19 -T0 -o "${BUILD_DIR}/${PKG_HDR_FILENAME}"
         cd - >/dev/null
 
         # Final Validation Step for headers
-        if ! bsdtar -tf "${BUILD_DIR}/${PKG_HDR_FILENAME}" | head -n 1 | grep -q ".PKGINFO"; then
+        if ! bsdtar -tf "${BUILD_DIR}/${PKG_HDR_FILENAME}" | head -n 1 | grep -q "^\.PKGINFO$"; then
             print_error "Arch headers package validation failed: .PKGINFO is not the first file in the archive."
         fi
         print_success "Arch headers: ${BUILD_DIR}/${PKG_HDR_FILENAME}"
