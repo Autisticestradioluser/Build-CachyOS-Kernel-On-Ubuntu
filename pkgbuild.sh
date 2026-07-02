@@ -477,11 +477,11 @@ EOF
         bsdtar -czf .MTREE --format=mtree --options='!gname,!uname' --null -T -
     cd - >/dev/null
 
-    # Enforce Archive Ordering and Ownership using piped zstd (bsdtar --zstd not supported on Ubuntu)
+    # Enforce Archive Ordering using piped zstd (bsdtar --zstd not supported on Ubuntu)
     # Order: .PKGINFO, .MTREE, .BUILDINFO, .INSTALL, then directories/files
+    # Root ownership is handled by fakeroot wrapper
     cd "${ARCH_IMG}"
     bsdtar -cf - \
-        --owner=root --group=root \
         .PKGINFO .MTREE .BUILDINFO .INSTALL \
         $(find . -mindepth 1 -maxdepth 1 -type d | sort) \
         $(find . -mindepth 1 -maxdepth 1 -type f ! -name '.PKGINFO' ! -name '.MTREE' ! -name '.BUILDINFO' ! -name '.INSTALL' | sort) | \
@@ -559,8 +559,9 @@ EOF
 
         # Create package using tar | zstd pipeline (replaces unsupported bsdtar --zstd flags)
         # Order: .PKGINFO first, then .MTREE, .BUILDINFO, .INSTALL, then directories/files
+        # Root ownership is handled by fakeroot wrapper
         cd "${ARCH_HDR}"
-        tar --owner=root --group=root -cf - \
+        tar -cf - \
             .PKGINFO .MTREE .BUILDINFO .INSTALL \
             $(find . -mindepth 1 -maxdepth 1 -type d | sort) \
             $(find . -mindepth 1 -maxdepth 1 -type f ! -name '.PKGINFO' ! -name '.MTREE' ! -name '.BUILDINFO' ! -name '.INSTALL' | sort) | \
