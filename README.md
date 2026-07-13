@@ -1,5 +1,4 @@
 ---
-
 # Custom Linux Kernel Builder for Ubuntu (LTS) - Arch + Debian Output
 **This is the `noble-lts` branch, configured to build the CachyOS LTS kernel (6.18.x series)**
 
@@ -20,7 +19,14 @@ A straightforward build script that compiles a customized Linux kernel with Cach
     ```
 2.  **Run it**
     ```bash
+    # Build LTS kernel (default bore scheduler)
     ./pkgbuild.sh
+    
+    # Build LTS with specific scheduler
+    _cpusched=eevdf ./pkgbuild.sh
+    
+    # Build LTS deb-only
+    _build_archpkg=no ./pkgbuild.sh
     ```
 3.  **Wait for the build to finish** (this takes time, grab a coffee ☕)
 4.  **Install the output you need:**
@@ -34,13 +40,13 @@ A straightforward build script that compiles a customized Linux kernel with Cach
 *   **Dual output in one run:** Creates both `.deb` and `.pkg.tar.zst` packages automatically.
 *   **Split packages:** Kernel image and headers are packaged separately. Enable headers with `_build_debug=yes`.
 *   **Environment overrides:** Change any setting without editing the script. Example: `_cpusched=rt ./pkgbuild.sh`.
-*   **Usr-merge aware:** Works correctly on modern Ubuntu (`/lib → /usr/lib`) and traditional filesystem layouts.
+*   **Usr-merge aware:** Works correctly on modern Ubuntu (/lib -> /usr/lib) and traditional filesystem layouts.
 *   **Source verification:** Checks `b2sum` hashes for the kernel tarball and base config before building.
 *   **Optional extras:** Built-in r8125 driver (with automatic r8169 blacklist), ZFS module support, custom tick rates, schedulers, LTO, and more.
 
 ---
 
-## ️ Key Configuration Options
+## Key Configuration Options
 All options use an underscore prefix and can be passed at runtime:  
 `_variable=value ./pkgbuild.sh`
 
@@ -52,7 +58,7 @@ All options use an underscore prefix and can be passed at runtime:
 | `_build_deb` | `yes` | Build Debian/Ubuntu `.deb` package |
 | `_build_debug` | `no` | Build & package kernel headers |
 | `_build_r8125` | `yes` | Include r8125 driver (automatically blacklists r8169) |
-| `_HZ_ticks` | `1000` | Timer frequency (100–1000) |
+| `_HZ_ticks` | `1000` | Timer frequency (100-1000) |
 | `_preempt` | `full` | Preemption model: `full`, `lazy`, `voluntary`, `none` |
 | `_hugepage` | `always` | Transparent hugepages: `always`, `madvise` |
 
