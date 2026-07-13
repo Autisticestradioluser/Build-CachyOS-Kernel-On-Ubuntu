@@ -1,5 +1,3 @@
----
-# Custom Linux Kernel Builder for Ubuntu (LTS) - Arch + Debian Output
 **This is the `noble-lts` branch, configured to build the CachyOS LTS kernel (6.18.x series)**
 
 A straightforward build script that compiles a customized Linux kernel with CachyOS performance patches and packages it for both **Ubuntu/Debian** and **Arch Linux** in a single run. Built for people who want fine-grained control over their kernel without juggling multiple build systems or packaging formats.
@@ -8,7 +6,6 @@ A straightforward build script that compiles a customized Linux kernel with Cach
 >
 > ⚖️ **License:** This project is dedicated to the **Public Domain**. You are free to use, modify, distribute, and sell this script for any purpose without restriction. No warranty is provided.
 
----
 
 ##  Quick Start
 *Make sure you understand this first.*
@@ -34,7 +31,6 @@ A straightforward build script that compiles a customized Linux kernel with Cach
     *   **Arch:** `sudo pacman -U linux-cachyos-*.pkg.tar.zst`
 5.  **Reboot into the new kernel**
 
----
 
 ## 📦 What This Script Does
 *   **Dual output in one run:** Creates both `.deb` and `.pkg.tar.zst` packages automatically.
@@ -44,7 +40,6 @@ A straightforward build script that compiles a customized Linux kernel with Cach
 *   **Source verification:** Checks `b2sum` hashes for the kernel tarball and base config before building.
 *   **Optional extras:** Built-in r8125 driver (with automatic r8169 blacklist), ZFS module support, custom tick rates, schedulers, LTO, and more.
 
----
 
 ## Key Configuration Options
 All options use an underscore prefix and can be passed at runtime:  
@@ -64,7 +59,6 @@ All options use an underscore prefix and can be passed at runtime:
 
 📖 The complete list of options and inline explanations lives at the top of [`pkgbuild.sh`](pkgbuild.sh).
 
----
 
 ## 🛠️ Requirements
 *   **OS:** Ubuntu Noble 24.04 LTS (other versions may work but are untested)
@@ -73,7 +67,6 @@ All options use an underscore prefix and can be passed at runtime:
 *   **Disk:** ~50 GB free space (kernel builds and staging take significant space)
 *   **Dependencies:** The script checks for missing packages automatically. If anything is missing, it will tell you exactly what to install.
 
----
 
 ##  Integrity & Security Notes
 *   ✅ **Verified before build:** Kernel source and base config are checked against known `b2sum` hashes.
@@ -81,7 +74,6 @@ All options use an underscore prefix and can be passed at runtime:
 *   ⚠️ **Package checksums not included:** Generated `.deb` and `.pkg.tar.zst` files are not digitally signed or checksummed by the script. Verify them manually if security is critical.
 *   ⚠️ **AI-assisted development:** This script contains AI-generated logic and packaging routines. AI does not replace human review. Always test in a non-critical environment first.
 
----
 
 ## ⚠️ Risks & Warnings (Please Read Carefully)
 Custom kernel compilation carries real, unavoidable risks. Acknowledge these before proceeding:
@@ -93,7 +85,6 @@ Custom kernel compilation carries real, unavoidable risks. Acknowledge these bef
 *   📦 **No warranty or support:** This is a personal/community tool. It is not maintained by upstream Linux, CachyOS, Ubuntu, or Arch.
 *   🔄 **Always keep a fallback kernel:** Do not remove your working kernel until you've confirmed the new one boots, runs correctly, and handles all your hardware.
 
----
 
 ## 🐛 Reporting Issues (READ THIS FIRST)
 **⚠️ IMPORTANT:** Please open an issue **ONLY** at this repository:  
@@ -113,7 +104,6 @@ When reporting, please include:
 
 *(Reminder: If you have a bug, report it here only. Do not bother upstream projects.)*
 
----
 
 ## 📜 Credits & Upstream Sources
 This script builds on work from:
@@ -124,9 +114,7 @@ This script builds on work from:
 
 All upstream code remains under its original licenses.
 
----
 
 ## 📝 Final Note
 This tool is meant to be transparent, predictable, and easy to control. If something breaks, check your config, verify your hardware support, and fall back to your known-working kernel. Use it carefully, test it safely, and never trust automation blindly.
 
-**Remember:** If you find a bug, report it **only** at [this repository's issue tracker](https://github.com/Autisticestradioluser/Build-CachyOS-Kernel-On-Ubuntu/issues).
