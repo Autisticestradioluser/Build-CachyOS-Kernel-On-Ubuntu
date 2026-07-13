@@ -1,6 +1,7 @@
 ---
 
-# Custom Linux Kernel Builder for Ubuntu (Arch + Debian Output)
+# Custom Linux Kernel Builder for Ubuntu (LTS) - Arch + Debian Output
+**This is the `noble-lts` branch, configured to build the CachyOS LTS kernel (6.18.x series)**
 
 A straightforward build script that compiles a customized Linux kernel with CachyOS performance patches and packages it for both **Ubuntu/Debian** and **Arch Linux** in a single run. Built for people who want fine-grained control over their kernel without juggling multiple build systems or packaging formats.
 

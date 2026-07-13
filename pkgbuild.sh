@@ -46,8 +46,8 @@ _build_archpkg=${_build_archpkg:-yes}    # yes = build Arch .pkg.tar.zst + mkini
 _build_deb=${_build_deb:-yes}            # yes = build Debian .deb
 
 # Kernel version info
-_major=7.1
-_minor=3
+_major=6.18
+_minor=37
 _tagrel=1
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
@@ -56,8 +56,8 @@ _srcver=${_major}.${_minor}-${_tagrel}
 _srcname=cachyos-${_srcver}
 
 # Checksums (Update per release)
-_kernel_b2sum=${_kernel_b2sum:-68aa55635fa73ff7d8efd63e498a0d624806e9e2d24718c1fac497f2257ee9d511a16a1da12e061c9867e21a77c14afa0c30fcae6642f8ca2d19daa000d54e4d}
-_config_b2sum=${_config_b2sum:-6bea8dff89f6d03ee5e7c6b76934e4ffaa3511cebd9c8f9986bf6c11816dcbd88f55c9c686fca6f176c35746f3fa7fc3c286218144d38289ec6f2079f5ce8b42}
+_kernel_b2sum=${_kernel_b2sum:-55cde4490d5a58794a3b873cac4560d1b5a862f46dc4b248b063760ead28afa705fd88f67e77cb71fb58a43c9f17d5e6c9ff48f72a5295bf86a7f305c1978cce}
+_config_b2sum=81fafd3adcaf3b690d8d4791693e68c7ae921d103ebfd70e8d0ae15cd05ecde5e6672ae43c3a7875686d883c1f5b82d2c8b37b40aee8dcb0563913f9dd6469b6
 
 # GPG keys for signature verification
 _validpgpkeys=(
@@ -66,7 +66,7 @@ _validpgpkeys=(
 )
 
 _patchsource="https://raw.githubusercontent.com/cachyos/kernel-patches/master/${_major}"
-BUILD_DIR="${PWD}/linux-cachyos-${_cpusched}-${_stable}-${pkgrel}-${_processor_opt}"
+BUILD_DIR="${PWD}/linux-cachyos-${_cpusched}-${_stable}-lts-${pkgrel}-${_processor_opt}"
 SRC_DIR="${BUILD_DIR}/src"
 DOWNLOAD_DIR="${BUILD_DIR}/downloads"
 
@@ -171,7 +171,7 @@ print_info "Verifying kernel signature..."
 gpg --batch --verify "${DOWNLOAD_DIR}/${_srcname}.tar.gz.asc" "${DOWNLOAD_DIR}/${_srcname}.tar.gz" || print_error "Kernel signature verification failed!"
 
 if [ ! -f "${DOWNLOAD_DIR}/config" ]; then
-    wget -O "${DOWNLOAD_DIR}/config" "https://raw.githubusercontent.com/CachyOS/linux-cachyos/refs/heads/master/linux-cachyos/config"
+    wget -O "${DOWNLOAD_DIR}/config" "https://raw.githubusercontent.com/CachyOS/linux-cachyos/refs/heads/master/linux-cachyos-lts/config"
 fi
 [[ "$(b2sum "${DOWNLOAD_DIR}/config" | cut -d' ' -f1)" == "$_config_b2sum" ]] || print_error "Config b2sum mismatch"
 
