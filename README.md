@@ -34,8 +34,8 @@ A straightforward build script that compiles a customized Linux kernel with Cach
 *   **Split packages:** Kernel image and headers are packaged separately. Enable headers with `_build_debug=yes`.
 *   **Environment overrides:** Change any setting without editing the script. Example: `_cpusched=rt ./pkgbuild.sh`.
 *   **Usr-merge aware:** Works correctly on modern Ubuntu (`/lib → /usr/lib`) and traditional filesystem layouts.
-*   **Source verification:** Checks `b2sum` hashes for the kernel tarball and base config before building.
-*   **Optional extras:** Built-in r8125 driver (with automatic r8169 blacklist), ZFS module support, custom tick rates, schedulers, LTO, and more.
+*   **Source verification:** Checks `b2sum` hashes for the kernel tarball and base config, and verifies the kernel tarball's GPG signature, before building. (Patches and the r8125 driver source are not verified — see below.)
+*   **Optional extras:** Built-in r8125 driver, ZFS module support, custom tick rates, schedulers, LTO, and more.
 
 ---
 
@@ -50,8 +50,8 @@ All options use an underscore prefix and can be passed at runtime:
 | `_build_archpkg` | `yes` | Build Arch `.pkg.tar.zst` + mkinitcpio preset |
 | `_build_deb` | `yes` | Build Debian/Ubuntu `.deb` package |
 | `_build_debug` | `no` | Build & package kernel headers |
-| `_build_r8125` | `yes` | Include r8125 driver (automatically blacklists r8169) |
-| `_HZ_ticks` | `1000` | Timer frequency (100–1000) |
+| `_build_r8125` | `yes` | Include r8125 driver. Marks the `.deb` as conflicting with the `r8169-dkms` package, but does **not** blacklist the in-tree `r8169` kernel module — see "Integrity & Security Notes" below |
+| `_HZ_ticks` | `500` | Timer frequency (100–1000) |
 | `_preempt` | `full` | Preemption model: `full`, `lazy`, `voluntary`, `none` |
 | `_hugepage` | `always` | Transparent hugepages: `always`, `madvise` |
 
@@ -69,10 +69,15 @@ All options use an underscore prefix and can be passed at runtime:
 ---
 
 ##  Integrity & Security Notes
-*   ✅ **Verified before build:** Kernel source and base config are checked against known `b2sum` hashes.
-*   ✅ **Conditional module signing:** External modules (ZFS/r8125) are signed automatically if `CONFIG_MODULE_SIG=y` is enabled in the kernel config.
-*   ⚠️ **Package checksums not included:** Generated `.deb` and `.pkg.tar.zst` files are not digitally signed or checksummed by the script. Verify them manually if security is critical.
-*   ⚠️ **AI-assisted development:** This script contains AI-generated logic and packaging routines. AI does not replace human review. Always test in a non-critical environment first.
+*   ✅ **Kernel source is verified two ways:** the tarball is checked against a hardcoded `b2sum` hash, and its GPG signature is verified against the CachyOS maintainer keys before anything is extracted. The base `.config` is checked against a hardcoded `b2sum` hash.
+*   ⚠️ **Patches are downloaded but not verified:** the scheduler, hardened, and RT patches are pulled over HTTPS from the CachyOS `kernel-patches` repo with no checksum or signature check before being applied.
+*   ⚠️ **r8125 driver source is unpinned and unverified:** with `_build_r8125=yes` (the default), the driver is cloned fresh from a third-party fork (`aravance/r8125`) with no commit pin, checksum, or signature check — unlike ZFS, which is cloned at a specific pinned commit. You're trusting that fork's current `HEAD` at build time.
+*   ⚠️ **r8169 is not blacklisted:** enabling r8125 only adds a `Conflicts: r8169-dkms` entry to the `.deb` control file. It does **not** blacklist the in-tree `r8169` kernel module (via `/etc/modprobe.d/` or similar), and the Arch package gets no equivalent handling at all. If your NIC is supported by both drivers, you may need to blacklist `r8169` yourself to avoid both trying to bind to the same device.
+*   ✅ **Conditional module signing:** external modules (ZFS/r8125) are signed automatically if `CONFIG_MODULE_SIG=y` is enabled in the kernel config.
+*   ⚠️ **Package checksums not included:** generated `.deb` and `.pkg.tar.zst` files are not digitally signed or checksummed by the script. Verify them manually if security is critical.
+*   ⚠️ **Overriding the pinned hashes is on you:** `_kernel_b2sum` and `_config_b2sum` can be overridden via environment variable (e.g. to build a newer release before the script is updated). If you do this, verification is only as good as the hash you supply — the script won't warn you either way.
+*   ℹ️ **Runs under `fakeroot`, not real root:** if not already running under `fakeroot`, the script silently re-executes itself under it. This fakes root ownership for packaging purposes only; it does not need or request real root to build the kernel. `sudo` is only needed to install missing build dependencies, and afterward to install the finished package.
+*   ⚠️ **AI-assisted development:** this script contains AI-generated logic and packaging routines. AI does not replace human review. Always test in a non-critical environment first.
 
 ---
 
