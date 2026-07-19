@@ -47,7 +47,7 @@ _build_deb=${_build_deb:-yes}            # yes = build Debian .deb
 
 # Kernel version info
 _major=6.18
-_minor=37
+_minor=38
 _tagrel=1
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
@@ -56,7 +56,7 @@ _srcver=${_major}.${_minor}-${_tagrel}
 _srcname=cachyos-${_srcver}
 
 # Checksums (Update per release)
-_kernel_b2sum=${_kernel_b2sum:-55cde4490d5a58794a3b873cac4560d1b5a862f46dc4b248b063760ead28afa705fd88f67e77cb71fb58a43c9f17d5e6c9ff48f72a5295bf86a7f305c1978cce}
+_kernel_b2sum=${_kernel_b2sum:-3190e413e6f5ed2a01afb29f4fae7522bfaa3fd8defd2e0be1458eac2828cc97d395a3f3617860c55a8d016f3181878c31ca6ecc031e3e3390ca0316bbabfc73}
 _config_b2sum=81fafd3adcaf3b690d8d4791693e68c7ae921d103ebfd70e8d0ae15cd05ecde5e6672ae43c3a7875686d883c1f5b82d2c8b37b40aee8dcb0563913f9dd6469b6
 
 # GPG keys for signature verification
