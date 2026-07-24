@@ -40,6 +40,10 @@ _autofdo_profile_name=${_autofdo_profile_name:-}
 _propeller=${_propeller:-no}
 _propeller_profiles=${_propeller_profiles:-no}
 _build_r8125=${_build_r8125:-yes}
+_build_nvidia=${_build_nvidia:-no}
+_nv_ver=580.173.02
+_nv_pkg="NVIDIA-Linux-x86_64-${_nv_ver}"
+_nv_sha256=${_nv_sha256:-}
 
 # Package targets (replaces _build_mkinitcpiod_preset)
 _build_archpkg=${_build_archpkg:-yes}    # yes = build Arch .pkg.tar.zst + mkinitcpio preset
@@ -48,15 +52,15 @@ _build_deb=${_build_deb:-yes}            # yes = build Debian .deb
 # Kernel version info
 _major=7.1
 _minor=4
-_tagrel=1
+_tagrel=2
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
-pkgrel=1
+pkgrel=2
 _srcver=${_major}.${_minor}-${_tagrel}
 _srcname=cachyos-${_srcver}
 
 # Checksums (Update per release)
-_kernel_b2sum=${_kernel_b2sum:-928902b66f01408e338ebb004837c4451246db2e6329143acdb8d4a163980cf6d352274eff5a4ca27ae207535e031351292d2526fa05cc9a99b7f3e6738be3cf}
+_kernel_b2sum=${_kernel_b2sum:-9ae56887d6b95bcb39dee4ab057efb76c3d203af5178215fd60723b009282a5fd9c2ff6c61e6eef0dfb7fdebc15dc602318752064e8dfbb28e2b76a625a20a5a}
 _config_b2sum=${_config_b2sum:-a81b1a49b7fd277a8a1395e38696c435489808399527dc49436c9b36940d5c652c523622efe68d34dd191669d8838ab4c041000331279ccf77cdc11dc4baaca2}
 
 # GPG keys for signature verification
@@ -187,6 +191,12 @@ esac
 [ "$_build_zfs" = "yes" ] && [ ! -d "${SRC_DIR}/zfs" ] && git clone --revision=6330a45b06d20125de679aae5f63ba14082671ef --depth=1 https://github.com/cachyos/zfs.git "${SRC_DIR}/zfs"
 [ "$_build_r8125" = "yes" ] && [ ! -d "${SRC_DIR}/r8125" ] && git clone --branch=rtl8125bp-fix-v3 --depth=1 https://github.com/Autisticestradioluser/r8125.git "${SRC_DIR}/r8125"
 
+if [ "$_build_nvidia" = "yes" ]; then
+    [ ! -f "${DOWNLOAD_DIR}/${_nv_pkg}.run" ] && wget -P "${DOWNLOAD_DIR}" "https://download.nvidia.com/XFree86/Linux-x86_64/${_nv_ver}/${_nv_pkg}.run"
+    [ ! -f "${DOWNLOAD_DIR}/${_nv_pkg}.run.sha256sum" ] && wget -P "${DOWNLOAD_DIR}" "https://download.nvidia.com/XFree86/Linux-x86_64/${_nv_ver}/${_nv_pkg}.run.sha256sum"
+    [ ! -f "${DOWNLOAD_DIR}/0001-nvidia-kms.patch" ] && wget -P "${DOWNLOAD_DIR}" "https://raw.githubusercontent.com/Autisticestradioluser/Build-CachyOS-Kernel-On-Ubuntu/main/patches/nvidia/0001-nvidia-kms.patch"
+fi
+
 # ======================== EXTRACT & CONFIGURE ========================
 print_step "Step 5: Extracting and Preparing Sources"
 cd "${SRC_DIR}"
@@ -196,6 +206,23 @@ cd "${_srcname}"
 echo "-$pkgrel" > localversion.10-pkgrel
 echo "-cachyos-${_cpusched}" > localversion.20-pkgname
 
+# Extract NVIDIA proprietary driver source
+if [ "$_build_nvidia" = "yes" ]; then
+    print_info "Extracting NVIDIA driver source..."
+    cd "${DOWNLOAD_DIR}"
+    sh "${_nv_pkg}.run" --extract-only
+    cd "${SRC_DIR}/${_srcname}"
+
+    # Verify NVIDIA driver sha256sum against NVIDIA's official checksum file
+    print_info "Verifying NVIDIA driver sha256sum..."
+    _nv_hashed=$(sha256sum "${DOWNLOAD_DIR}/${_nv_pkg}.run" | cut -d' ' -f1)
+    _nv_expected=$(awk '{print $1}' "${DOWNLOAD_DIR}/${_nv_pkg}.run.sha256sum")
+    [[ "${_nv_hashed}" == "${_nv_expected}" ]] || print_error "NVIDIA sha256sum mismatch"
+
+    # Kernel 7.1.x compatibility: of_gpio.h was removed, use gpio/machine.h
+    sed -i 's|#include <linux/of_gpio.h>|#include <linux/gpio/machine.h>|' "${DOWNLOAD_DIR}/${_nv_pkg}/common/inc/nv-linux.h" 2>/dev/null || true
+fi
+
 print_step "Step 6: Applying Patches"
 [[ "$_use_llvm_lto" != "none" ]] && patch -Np1 < "${DOWNLOAD_DIR}/dkms-clang.patch"
 case "$_cpusched" in
@@ -204,6 +231,12 @@ case "$_cpusched" in
 esac
 [ "$_cpusched" = "hardened" ] && patch -Np1 < "${DOWNLOAD_DIR}/0001-hardened.patch"
 [[ "$_cpusched" == "rt" || "$_cpusched" == "rt-bore" ]] && patch -Np1 < "${DOWNLOAD_DIR}/0001-rt-i915.patch"
+
+# Apply NVIDIA KMS patch (fetched from repo raw GitHub URL)
+if [ "$_build_nvidia" = "yes" ] && [ -f "${DOWNLOAD_DIR}/0001-nvidia-kms.patch" ]; then
+    print_info "Applying NVIDIA KMS patch..."
+    patch -Np1 -i "${DOWNLOAD_DIR}/0001-nvidia-kms.patch" -d "${DOWNLOAD_DIR}/${_nv_pkg}/kernel"
+fi
 
 print_step "Step 7: Configuring Kernel"
 cp "${DOWNLOAD_DIR}/config" .config
@@ -265,6 +298,11 @@ make -s kernelrelease > version
 KERNEL_VERSION=$(cat version)
 print_success "Prepared kernel version: ${KERNEL_VERSION}"
 
+# NVIDIA proprietary driver is incompatible with PREEMPT_RT kernels
+if [ "$_build_nvidia" = "yes" ] && [[ "$_cpusched" == "rt" || "$_cpusched" == "rt-bore" ]]; then
+    print_error "NVIDIA proprietary driver is incompatible with RT kernels (_cpusched=$_cpusched). Set _build_nvidia=no or use a non-RT scheduler."
+fi
+
 [ "$_makenconfig" = "yes" ] && make "${BUILD_FLAGS[@]}" nconfig
 [ "$_makexconfig" = "yes" ] && make "${BUILD_FLAGS[@]}" xconfig
 
@@ -291,6 +329,15 @@ make -C tools/bpf/bpftool vmlinux.h feature-clang-bpf-co-re=1
     make "${BUILD_FLAGS[@]}" KERNELDIR="${SRC_DIR}/${_srcname}" modules
     cd "${SRC_DIR}/${_srcname}"
 }
+
+if [ "$_build_nvidia" = "yes" ]; then
+    print_info "Building NVIDIA proprietary kernel modules..."
+    cd "${DOWNLOAD_DIR}/${_nv_pkg}/kernel"
+    MODULE_FLAGS=()
+    MODULE_FLAGS+=(NV_EXCLUDE_BUILD_MODULES='__EXCLUDE_MODULES')
+    make "${BUILD_FLAGS[@]}" "${MODULE_FLAGS[@]}" -j"$(nproc)" modules
+    cd "${SRC_DIR}/${_srcname}"
+fi
 
 # ======================== STAGING ========================
 print_step "Step 9: Preparing Installation Archive - USR-MERGE AWARE VERSION"
@@ -346,6 +393,15 @@ sign_modules() {
     sign_modules "${r8125_DIR}"
 }
 
+if [ "$_build_nvidia" = "yes" ]; then
+    print_info "Installing NVIDIA modules"
+    nvidia_DIR="${MODULES_BASE_DIR}/${KERNEL_VERSION}/kernel/extra"
+    mkdir -p "${nvidia_DIR}"
+    find "${DOWNLOAD_DIR}/${_nv_pkg}/kernel" -name "*.ko" -exec cp {} "${nvidia_DIR}/" \;
+    install -Dm644 "${DOWNLOAD_DIR}/${_nv_pkg}/LICENSE" "${INSTALL_DIR}/usr/share/licenses/linux-cachyos-nvidia/LICENSE" 2>/dev/null || true
+    sign_modules "${nvidia_DIR}"
+fi
+
 print_info "Compressing kernel modules with zstd..."
 find "${MODULES_BASE_DIR}/${KERNEL_VERSION}" -type f -name '*.ko' | while read -r module; do
     zstd --rm -T0 -19 "$module"
@@ -394,6 +450,7 @@ DESC="Linux ${KERNEL_VERSION} CachyOS kernel [${_cpusched^^} sched] [${_preempt}
 [[ "$_hugepage" == "always" ]] && DESC+=" [THP=always]"
 [[ "$_build_zfs" == "yes" ]] && DESC+=" [ZFS]"
 [[ "$_build_r8125" == "yes" ]] && DESC+=" [r8125]"
+[[ "$_build_nvidia" == "yes" ]] && DESC+=" [nvidia]"
 
 # --- ARCH PACKAGING ---
 if [[ "$_build_archpkg" == "yes" ]]; then
@@ -493,6 +550,88 @@ EOF
         print_error "Arch package validation failed: .PKGINFO is not the first file in the archive."
     fi
     print_success "Arch image: ${BUILD_DIR}/${PKG_IMG_FILENAME}"
+
+    # NVIDIA separate split package
+    if [ "$_build_nvidia" = "yes" ]; then
+        print_info "Building NVIDIA Arch package..."
+        NVIDIA_DIR="${BUILD_DIR}/pkg-arch-nvidia"
+        rm -rf "${NVIDIA_DIR}"
+        mkdir -p "${NVIDIA_DIR}/usr/lib/modules/${KERNEL_VERSION}/kernel/extra"
+        mkdir -p "${NVIDIA_DIR}/usr/share/licenses/linux-cachyos-nvidia"
+
+        # Copy NVIDIA .ko.zst modules (already compressed in staging)
+        find "${MODULES_BASE_DIR}/${KERNEL_VERSION}/kernel/extra" -name "nvidia*.ko.zst" -exec cp {} "${NVIDIA_DIR}/usr/lib/modules/${KERNEL_VERSION}/kernel/extra/" \;
+
+        # Copy NVIDIA LICENSE
+        if [ -f "${INSTALL_DIR}/usr/share/licenses/linux-cachyos-nvidia/LICENSE" ]; then
+            cp "${INSTALL_DIR}/usr/share/licenses/linux-cachyos-nvidia/LICENSE" "${NVIDIA_DIR}/usr/share/licenses/linux-cachyos-nvidia/"
+        elif [ -f "${DOWNLOAD_DIR}/${_nv_pkg}/LICENSE" ]; then
+            cp "${DOWNLOAD_DIR}/${_nv_pkg}/LICENSE" "${NVIDIA_DIR}/usr/share/licenses/linux-cachyos-nvidia/"
+        fi
+
+        # .PKGINFO
+        NVIDIA_PKGVER="${KERNEL_VERSION//-/.}-${pkgrel}"
+        NVIDIA_FILENAME="linux-cachyos-${_cpusched}-nvidia-${NVIDIA_PKGVER}-x86_64.pkg.tar.zst"
+
+        NVIDIA_SIZE=$(find "${NVIDIA_DIR}" -mindepth 1 -maxdepth 1 \
+            ! -name '.PKGINFO' ! -name '.MTREE' ! -name '.BUILDINFO' ! -name '.INSTALL' \
+            -exec du -sb {} + | awk '{sum+=$1} END {print sum+0}')
+
+        cat > "${NVIDIA_DIR}/.PKGINFO" << EOF
+pkgname = linux-cachyos-${_cpusched}-nvidia
+pkgbase = linux-cachyos-nvidia
+pkgver = ${NVIDIA_PKGVER}
+pkgdesc = NVIDIA proprietary modules for Linux ${KERNEL_VERSION} CachyOS kernel
+url = https://github.com/CachyOS/linux-cachyos
+builddate = $(date +%s)
+packager = GitHub User
+size = ${NVIDIA_SIZE}
+arch = x86_64
+license = MIT
+depends = linux-cachyos-${_cpusched}=${NVIDIA_PKGVER}
+install = .INSTALL
+EOF
+
+        cat > "${NVIDIA_DIR}/.BUILDINFO" << EOF
+format = 1
+pkgname = linux-cachyos-${_cpusched}-nvidia
+pkgver = ${NVIDIA_PKGVER}
+EOF
+
+        # .INSTALL script
+        cat > "${NVIDIA_DIR}/.INSTALL" << EOF
+post_install() {
+    depmod ${KERNEL_VERSION}
+}
+post_upgrade() {
+    depmod ${KERNEL_VERSION}
+}
+post_remove() {
+    depmod ${KERNEL_VERSION}
+}
+EOF
+
+        # .MTREE
+        cd "${NVIDIA_DIR}"
+        find . -mindepth 1 -maxdepth 1 ! -name '.MTREE' ! -name '.PKGINFO' ! -name '.BUILDINFO' ! -name '.INSTALL' -print0 | \
+            bsdtar -czf .MTREE --format=mtree --options='!gname,!uname' --null -T -
+        cd - >/dev/null
+
+        # Build package using tar | zstd pipeline
+        cd "${NVIDIA_DIR}"
+        bsdtar -cf - \
+            .PKGINFO .MTREE .BUILDINFO .INSTALL \
+            $(find . -mindepth 1 -maxdepth 1 -type d | sort) \
+            $(find . -mindepth 1 -maxdepth 1 -type f ! -name '.PKGINFO' ! -name '.MTREE' ! -name '.BUILDINFO' ! -name '.INSTALL' | sort) | \
+            zstd -19 -T0 -o "${BUILD_DIR}/${NVIDIA_FILENAME}"
+        cd - >/dev/null
+
+        # Validation
+        if ! bsdtar -tf "${BUILD_DIR}/${NVIDIA_FILENAME}" | head -n 1 | grep -q "^\.PKGINFO$"; then
+            print_error "NVIDIA Arch package validation failed"
+        fi
+        print_success "Arch NVIDIA package: ${BUILD_DIR}/${NVIDIA_FILENAME}"
+    fi
 
     # Headers tree
     if [ "$_build_debug" = "yes" ]; then
@@ -761,7 +900,97 @@ EOF
     DEB_IMG_FILE="${BUILD_DIR}/${DEB_IMG_PKG}_${DEB_VERSION}_amd64.deb"
     dpkg-deb --root-owner-group -b "${DEB_IMG}" "${DEB_IMG_FILE}"
     print_success "Debian image: ${DEB_IMG_FILE}"
-    
+
+    # --- NVIDIA PACKAGE ---
+    if [ "$_build_nvidia" = "yes" ]; then
+        print_info "Building NVIDIA Debian package..."
+
+        DEB_NV_PKG="linux-modules-nvidia-${KERNEL_VERSION}"
+        DEB_NV="${BUILD_DIR}/pkg-deb-nvidia"
+        rm -rf "${DEB_NV}"
+        mkdir -p "${DEB_NV}/DEBIAN" "${DEB_NV}/usr/lib/modules/${KERNEL_VERSION}/kernel/extra"
+        mkdir -p "${DEB_NV}/usr/share/doc/linux-cachyos-nvidia"
+
+        # Copy NVIDIA modules (already zstd-compressed from staging)
+        find "${MODULES_BASE_DIR}/${KERNEL_VERSION}/kernel/extra" -name "nvidia*.ko.zst" -exec cp {} "${DEB_NV}/usr/lib/modules/${KERNEL_VERSION}/kernel/extra/" \;
+
+        # Copy MODULE.symvers
+        cp "${SRC_DIR}/${_srcname}/Module.symvers" "${DEB_NV}/usr/lib/modules/${KERNEL_VERSION}/" 2>/dev/null || true
+
+        # Copy NVIDIA LICENSE
+        if [ -f "${DOWNLOAD_DIR}/${_nv_pkg}/LICENSE" ]; then
+            cp "${DOWNLOAD_DIR}/${_nv_pkg}/LICENSE" "${DEB_NV}/usr/share/doc/linux-cachyos-nvidia/copyright"
+        fi
+
+        # DEBIAN/control
+        cat > "${DEB_NV}/DEBIAN/control" << EOF
+Package: ${DEB_NV_PKG}
+Version: ${DEB_VERSION}
+Section: kernel
+Priority: optional
+Maintainer: GitHub User <github@example.com>
+Architecture: amd64
+Depends: ${DEB_IMG_PKG} (= ${DEB_VERSION})
+Recommends: nvidia-driver, nvidia-dkms
+Conflicts: nvidia-driver, nvidia-dkms
+Description: NVIDIA proprietary kernel modules for ${DESC}
+ Contains the NVIDIA kernel modules (nvidia, nvidia-modeset, nvidia-drm, nvidia-uvm)
+ built for the ${KERNEL_VERSION} CachyOS kernel.
+EOF
+
+        # DEBIAN/postinst
+        cat > "${DEB_NV}/DEBIAN/postinst" << EOF
+#!/bin/sh
+set -e
+version='${KERNEL_VERSION}'
+
+if [ "\$1" = configure ]; then
+    moddir="/usr/lib/modules/\$version"
+    if [ -d "\$moddir" ]; then
+        depmod "\$version" || true
+    fi
+    if command -v update-initramfs >/dev/null 2>&1; then
+        update-initramfs -u -k "\$version" 2>/dev/null || true
+    fi
+fi
+exit 0
+EOF
+        chmod +x "${DEB_NV}/DEBIAN/postinst"
+
+        # DEBIAN/prerm
+        cat > "${DEB_NV}/DEBIAN/prerm" << EOF
+#!/bin/sh
+set -e
+version='${KERNEL_VERSION}'
+
+if [ "\$1" = remove ] || [ "\$1" = purge ]; then
+    if command -v update-initramfs >/dev/null 2>&1; then
+        update-initramfs -u -k "\$version" 2>/dev/null || true
+    fi
+fi
+exit 0
+EOF
+        chmod +x "${DEB_NV}/DEBIAN/prerm"
+
+        # DEBIAN/postrm
+        cat > "${DEB_NV}/DEBIAN/postrm" << EOF
+#!/bin/sh
+set -e
+version='${KERNEL_VERSION}'
+
+if [ "\$1" = purge ]; then
+    rm -rf "/usr/lib/modules/\$version/kernel/extra/nvidia"* 2>/dev/null || true
+fi
+exit 0
+EOF
+        chmod +x "${DEB_NV}/DEBIAN/postrm"
+
+        # Build
+        DEB_NV_FILE="${BUILD_DIR}/${DEB_NV_PKG}_${DEB_VERSION}_amd64.deb"
+        dpkg-deb --root-owner-group -b "${DEB_NV}" "${DEB_NV_FILE}"
+        print_success "Debian NVIDIA package: ${DEB_NV_FILE}"
+    fi
+
     # --- HEADERS PACKAGE ---
     if [ "$_build_debug" = "yes" ]; then
         mkdir -p "${DEB_HDR}/DEBIAN" "${DEB_HDR}/usr/src"
@@ -857,10 +1086,12 @@ if [[ "$_build_archpkg" == "yes" ]]; then
     PACMAN_PKGVER="${KERNEL_VERSION//-/.}-${pkgrel}"
     echo " Arch Image:   sudo pacman -U ${BUILD_DIR}/linux-cachyos-${_cpusched}-${PACMAN_PKGVER}-x86_64.pkg.tar.zst"
     [[ "$_build_debug" == "yes" ]] && echo " Arch Headers: sudo pacman -U ${BUILD_DIR}/linux-cachyos-${_cpusched}-headers-${PACMAN_PKGVER}-x86_64.pkg.tar.zst"
+    [[ "$_build_nvidia" == "yes" ]] && echo " Arch NVIDIA:  sudo pacman -U ${BUILD_DIR}/linux-cachyos-${_cpusched}-nvidia-${PACMAN_PKGVER}-x86_64.pkg.tar.zst"
 fi
 if [[ "$_build_deb" == "yes" ]]; then
     echo " Debian Image: sudo dpkg -i ${DEB_IMG_FILE}"
     [[ "$_build_debug" == "yes" ]] && echo " Debian Hdrs:  sudo dpkg -i ${DEB_HDR_FILE}"
+    [[ "$_build_nvidia" == "yes" ]] && echo " Debian NVIDIA: sudo dpkg -i ${BUILD_DIR}/linux-modules-nvidia-${KERNEL_VERSION}_${DEB_VERSION}_amd64.deb"
 fi
 echo "=========================================="
 if [ "$USR_MERGED" = true ]; then

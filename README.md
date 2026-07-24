@@ -51,6 +51,7 @@ All options use an underscore prefix and can be passed at runtime:
 | `_build_deb` | `yes` | Build Debian/Ubuntu `.deb` package |
 | `_build_debug` | `no` | Build & package kernel headers |
 | `_build_r8125` | `yes` | Include r8125 driver. Marks the `.deb` as conflicting with the `r8169-dkms` package, but does **not** blacklist the in-tree `r8169` kernel module — see "Integrity & Security Notes" below |
+| `_build_nvidia` | `no` | Build NVIDIA proprietary 580.x kernel modules (Maxwell/Pascal GPUs). Incompatible with RT schedulers (`rt`, `rt-bore`). Uses sha256sum verification against NVIDIA's official checksum file. |
 | `_HZ_ticks` | `500` | Timer frequency (100–1000) |
 | `_preempt` | `full` | Preemption model: `full`, `lazy`, `voluntary`, `none` |
 | `_hugepage` | `always` | Transparent hugepages: `always`, `madvise` |
