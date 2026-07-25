@@ -218,9 +218,6 @@ if [ "$_build_nvidia" = "yes" ]; then
     _nv_hashed=$(sha256sum "${DOWNLOAD_DIR}/${_nv_pkg}.run" | cut -d' ' -f1)
     _nv_expected=$(awk '{print $1}' "${DOWNLOAD_DIR}/${_nv_pkg}.run.sha256sum")
     [[ "${_nv_hashed}" == "${_nv_expected}" ]] || print_error "NVIDIA sha256sum mismatch"
-
-    # Kernel 7.1.x compatibility: of_gpio.h was removed, use gpio/machine.h
-    sed -i 's|#include <linux/of_gpio.h>|#include <linux/gpio/machine.h>|' "${DOWNLOAD_DIR}/${_nv_pkg}/common/inc/nv-linux.h" 2>/dev/null || true
 fi
 
 print_step "Step 6: Applying Patches"
@@ -333,7 +330,12 @@ make -C tools/bpf/bpftool vmlinux.h feature-clang-bpf-co-re=1
 if [ "$_build_nvidia" = "yes" ]; then
     print_info "Building NVIDIA proprietary kernel modules..."
     cd "${DOWNLOAD_DIR}/${_nv_pkg}/kernel"
-    MODULE_FLAGS=()
+    MODULE_FLAGS=(
+        KERNEL_UNAME="${KERNEL_VERSION}"
+        IGNORE_PREEMPT_RT_PRESENCE=1
+        SYSSRC="${SRC_DIR}/${_srcname}"
+        SYSOUT="${SRC_DIR}/${_srcname}"
+    )
     MODULE_FLAGS+=(NV_EXCLUDE_BUILD_MODULES='__EXCLUDE_MODULES')
     make "${BUILD_FLAGS[@]}" "${MODULE_FLAGS[@]}" -j"$(nproc)" modules
     cd "${SRC_DIR}/${_srcname}"
