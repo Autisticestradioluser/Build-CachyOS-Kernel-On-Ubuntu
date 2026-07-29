@@ -6,7 +6,11 @@ A straightforward build script that compiles a customized Linux kernel with Cach
 
 >  **AI Assistance Notice:** This project was developed with AI help. AI-generated automation does not guarantee correctness. Always review the code, test in a safe environment, and understand the risks before using it on important systems. Human oversight is required.
 >
-> ⚖️ **License:** This project is dedicated to the **Public Domain**. You are free to use, modify, distribute, and sell this script for any purpose without restriction. No warranty is provided.
+> ⚖️ **License:** This project is licensed under the **GNU General Public License v3.0 (GPLv3)**.
+>
+> This script is a derivative work of the [CachyOS linux-cachyos PKGBUILDs](https://github.com/CachyOS/linux-cachyos), which are licensed under GPLv3. The kernel sources, patches, and configs it downloads and builds are primarily under GPL-2.0-only (with some components under CDDL, MIT, and other GPL-compatible licenses).
+>
+> You are free to use, modify, and distribute this script under the terms of the GPLv3. No warranty is provided. See [LICENSE](LICENSE) for details.
 
 ---
 
@@ -116,12 +120,13 @@ When reporting, please include:
 
 ## 📜 Credits & Upstream Sources
 This script builds on work from:
-*   [CachyOS Linux Kernel](https://github.com/CachyOS/linux-cachyos)
-*   [CachyOS Kernel Patches](https://github.com/cachyos/kernel-patches)
-*   Arch Linux packaging standards
-*   Debian `linux-image` maintainer script policies
+*   **[CachyOS Linux Kernel](https://github.com/CachyOS/linux-cachyos)** — GPLv3; provides PKGBUILD structure, build logic, and kernel configs
+*   **[CachyOS Kernel Patches](https://github.com/cachyos/kernel-patches)** — GPL; provides performance patches and scheduler variants
+*   **Arch Linux packaging standards** — provides `.pkg.tar.zst` packaging conventions and `mkinitcpio` preset format
+*   **Debian `linux-image` maintainer script policies** — provides `.deb` packaging conventions and maintainer scripts
+*   **Linux Kernel** — GPL-2.0-only; the kernel source itself
 
-All upstream code remains under its original licenses.
+All upstream code remains under its original licenses. This script is a derivative work of the CachyOS PKGBUILDs and is therefore licensed under GPLv3 to match. The generated kernel packages inherit the licenses of their constituent components (kernel: GPL-2.0-only, ZFS: CDDL, NVIDIA: proprietary, etc.).
 
 ---
 
