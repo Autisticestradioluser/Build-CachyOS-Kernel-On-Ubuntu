@@ -27,12 +27,29 @@ The goal is to create a streamlined, reproducible kernel build pipeline tailored
 
 ## 🔗 Upstream Sources
 
-This script uses patches and code inspirations from the following upstream repositories:
+This script builds on work from:
+- **[CachyOS Linux Kernel](https://github.com/CachyOS/linux-cachyos)** — GPLv3; provides PKGBUILD structure, build logic, and kernel configs
+- **[CachyOS Kernel Patches](https://github.com/cachyos/kernel-patches)** — GPL; provides performance patches and scheduler variants
+- **Arch Linux packaging standards** — provides `.pkg.tar.zst` packaging conventions and `mkinitcpio` preset format
+- **Debian `linux-image` maintainer script policies** — provides `.deb` packaging conventions and maintainer scripts
+- **Linux Kernel** — GPL-2.0-only; the kernel source itself
 
 - [CachyOS Linux Kernel Configuration and PKGBUILD](https://github.com/CachyOS/linux-cachyos)
 - [CachyOS Kernel Patches](https://github.com/CachyOS/kernel-patches)
 
 These patches are applied to the official Linux kernel source code to optimize performance.
+
+---
+
+## License
+
+This project is licensed under the **GNU General Public License v3.0 (GPLv3)**.
+
+This script is a derivative work of the [CachyOS linux-cachyos PKGBUILDs](https://github.com/CachyOS/linux-cachyos), which are licensed under GPLv3. The kernel sources, patches, and configs it downloads and builds are primarily under GPL-2.0-only (with some components under CDDL, MIT, and other GPL-compatible licenses).
+
+You are free to use, modify, and distribute this script under the terms of the GPLv3. No warranty is provided. See [LICENSE](LICENSE) for details.
+
+All upstream code remains under its original licenses. The generated kernel packages inherit the licenses of their constituent components (kernel: GPL-2.0-only, ZFS: CDDL, NVIDIA: proprietary, etc.).
 
 ---
 
