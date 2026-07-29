@@ -22,7 +22,8 @@ _localmodcfg=${_localmodcfg:-no}
 _localmodcfg_path=${_localmodcfg_path:-"$HOME/.config/modprobed.db"}
 _use_current=${_use_current:-no}
 _cc_harder=${_cc_harder:-yes}
-_per_gov=${_per_gov:-yes}
+# Default CPU governor: performance, powersave, or schedutil (upstream CachyOS default)
+_default_gov=${_default_gov:-performance}
 _tcp_bbr3=${_tcp_bbr3:-yes}
 _HZ_ticks=${_HZ_ticks:-500}
 _tickrate=${_tickrate:-full}
@@ -263,7 +264,28 @@ case "$_use_llvm_lto" in
 esac
 
 scripts/config -d HZ_300 -e "HZ_${_HZ_ticks}" --set-val HZ "${_HZ_ticks}"
-[ "$_per_gov" = "yes" ] && scripts/config -d CPU_FREQ_DEFAULT_GOV_SCHEDUTIL -e CPU_FREQ_DEFAULT_GOV_PERFORMANCE
+# Backward compat: _per_gov=yes → performance, _per_gov=no → schedutil
+if [ -n "${_per_gov:-}" ]; then
+    if [ "$_per_gov" = "yes" ]; then _default_gov=performance; else _default_gov=schedutil; fi
+fi
+
+case "$_default_gov" in
+    performance)
+        print_info "Setting performance governor as default..."
+        scripts/config -d CPU_FREQ_DEFAULT_GOV_SCHEDUTIL -e CPU_FREQ_DEFAULT_GOV_PERFORMANCE
+        ;;
+    powersave)
+        print_info "Setting powersave governor as default..."
+        scripts/config -d CPU_FREQ_DEFAULT_GOV_SCHEDUTIL -d CPU_FREQ_DEFAULT_GOV_PERFORMANCE -e CPU_FREQ_DEFAULT_GOV_POWERSAVE
+        ;;
+    schedutil)
+        print_info "Using schedutil governor as default (upstream CachyOS default)..."
+        scripts/config -d CPU_FREQ_DEFAULT_GOV_PERFORMANCE -d CPU_FREQ_DEFAULT_GOV_POWERSAVE -e CPU_FREQ_DEFAULT_GOV_SCHEDUTIL
+        ;;
+    *)
+        print_error "Invalid _default_gov: '$_default_gov'. Use: performance, powersave, or schedutil"
+        ;;
+esac
 
 case "$_tickrate" in
     periodic) scripts/config -d NO_HZ_IDLE -d NO_HZ_FULL -d NO_HZ -d NO_HZ_COMMON -e HZ_PERIODIC ;;
