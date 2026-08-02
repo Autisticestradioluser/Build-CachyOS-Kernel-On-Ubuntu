@@ -52,7 +52,7 @@ _minor=40
 _tagrel=1
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
-pkgrel=1
+pkgrel=2
 _srcver=${_major}.${_minor}-${_tagrel}
 _srcname=cachyos-${_srcver}
 
@@ -186,7 +186,7 @@ esac
 [[ "$_cpusched" == "rt" || "$_cpusched" == "rt-bore" ]] && wget -q -N -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/0001-rt-i915.patch"
 [[ "$_use_llvm_lto" != "none" ]] && [ ! -f "${DOWNLOAD_DIR}/dkms-clang.patch" ] && wget -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/dkms-clang.patch"
 [ "$_build_zfs" = "yes" ] && [ ! -d "${SRC_DIR}/zfs" ] && git clone --revision=6330a45b06d20125de679aae5f63ba14082671ef --depth=1 https://github.com/cachyos/zfs.git "${SRC_DIR}/zfs"
-[ "$_build_r8125" = "yes" ] && [ ! -d "${SRC_DIR}/r8125" ] && git clone --branch=rtl8125bp-fix-v3 --depth=1 https://github.com/Autisticestradioluser/r8125.git "${SRC_DIR}/r8125"
+[ "$_build_r8125" = "yes" ] && [ ! -d "${SRC_DIR}/r8125" ] && git clone --branch=rtl8125bp-fix-v4-disable-eee-rpm --depth=1 https://github.com/Autisticestradioluser/r8125.git "${SRC_DIR}/r8125"
 
 # ======================== EXTRACT & CONFIGURE ========================
 print_step "Step 5: Extracting and Preparing Sources"
