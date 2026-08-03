@@ -48,16 +48,16 @@ _build_deb=${_build_deb:-yes}            # yes = build Debian .deb
 
 # Kernel version info
 _major=6.18
-_minor=40
+_minor=42
 _tagrel=1
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
-pkgrel=2
+pkgrel=1
 _srcver=${_major}.${_minor}-${_tagrel}
 _srcname=cachyos-${_srcver}
 
 # Checksums (Update per release)
-_kernel_b2sum=${_kernel_b2sum:-2731b326bca288716a947d36e09789dcb10942931552792181a48664b62396f843e5af7174e39ad1e4dc9b97166e01f1cc656dc1a389cf7323c7247e1a07f3c5}
+_kernel_b2sum=${_kernel_b2sum:-e322057f183bf666741ec12d2d64f681d9ba7bc4e4326354656ca23be5ecfb5ab3ab2ef494ddb54605f4ff1d5bba5a08493760eea9a36860080eafdb369a0321}
 _config_b2sum=${_config_b2sum:-81fafd3adcaf3b690d8d4791693e68c7ae921d103ebfd70e8d0ae15cd05ecde5e6672ae43c3a7875686d883c1f5b82d2c8b37b40aee8dcb0563913f9dd6469b6}
 
 # GPG keys for signature verification
@@ -186,7 +186,7 @@ esac
 [[ "$_cpusched" == "rt" || "$_cpusched" == "rt-bore" ]] && wget -q -N -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/0001-rt-i915.patch"
 [[ "$_use_llvm_lto" != "none" ]] && [ ! -f "${DOWNLOAD_DIR}/dkms-clang.patch" ] && wget -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/dkms-clang.patch"
 [ "$_build_zfs" = "yes" ] && [ ! -d "${SRC_DIR}/zfs" ] && git clone --revision=6330a45b06d20125de679aae5f63ba14082671ef --depth=1 https://github.com/cachyos/zfs.git "${SRC_DIR}/zfs"
-[ "$_build_r8125" = "yes" ] && [ ! -d "${SRC_DIR}/r8125" ] && git clone --branch=rtl8125bp-fix-v4-disable-eee-rpm --depth=1 https://github.com/Autisticestradioluser/r8125.git "${SRC_DIR}/r8125"
+[ "$_build_r8125" = "yes" ] && [ ! -d "${SRC_DIR}/r8125" ] && git clone --branch=rtl8125bp-fix-v5-guard-eee --depth=1 https://github.com/Autisticestradioluser/r8125.git "${SRC_DIR}/r8125"
 
 # ======================== EXTRACT & CONFIGURE ========================
 print_step "Step 5: Extracting and Preparing Sources"
