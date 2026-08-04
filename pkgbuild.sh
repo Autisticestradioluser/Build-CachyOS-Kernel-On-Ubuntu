@@ -767,10 +767,14 @@ if [[ "$_build_deb" == "yes" ]]; then
         MODULES_PATH="usr/lib/modules"
         mkdir -p "${DEB_IMG}/usr/lib/modules"
         cp -a "${INSTALL_DIR}/usr/lib/modules/${KERNEL_VERSION}" "${DEB_IMG}/usr/lib/modules/"
+        # Remove build symlink owned by headers package, not image package
+        rm -f "${DEB_IMG}/usr/lib/modules/${KERNEL_VERSION}/build"
     else
         MODULES_PATH="lib/modules"
         mkdir -p "${DEB_IMG}/lib/modules"
         cp -a "${INSTALL_DIR}/lib/modules/${KERNEL_VERSION}" "${DEB_IMG}/lib/modules/"
+        # Remove build symlink owned by headers package, not image package
+        rm -f "${DEB_IMG}/lib/modules/${KERNEL_VERSION}/build"
     fi
     
     cp -a "${INSTALL_DIR}/boot/"* "${DEB_IMG}/boot/"
