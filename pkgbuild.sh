@@ -41,6 +41,9 @@ _autofdo_profile_name=${_autofdo_profile_name:-}
 _propeller=${_propeller:-no}
 _propeller_profiles=${_propeller_profiles:-no}
 _build_r8125=${_build_r8125:-yes}
+# r8125 source: "v6" (default, flap fix) or "oldtag" to pin to the
+# last known-good version before the 9.018.00 regression
+_r8125_src=${_r8125_src:-v6}
 _build_nvidia=${_build_nvidia:-no}
 _nv_ver=580.173.02
 _nv_pkg="NVIDIA-Linux-x86_64-${_nv_ver}"
@@ -56,7 +59,7 @@ _minor=6
 _tagrel=1
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
-pkgrel=1
+pkgrel=2
 _srcver=${_major}.${_minor}-${_tagrel}
 _srcname=cachyos-${_srcver}
 
@@ -190,7 +193,14 @@ esac
 [[ "$_cpusched" == "rt" || "$_cpusched" == "rt-bore" ]] && wget -q -N -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/0001-rt-i915.patch"
 [[ "$_use_llvm_lto" != "none" ]] && [ ! -f "${DOWNLOAD_DIR}/dkms-clang.patch" ] && wget -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/dkms-clang.patch"
 [ "$_build_zfs" = "yes" ] && [ ! -d "${SRC_DIR}/zfs" ] && git clone --revision=6330a45b06d20125de679aae5f63ba14082671ef --depth=1 https://github.com/cachyos/zfs.git "${SRC_DIR}/zfs"
-[ "$_build_r8125" = "yes" ] && [ ! -d "${SRC_DIR}/r8125" ] && git clone --branch=rtl8125bp-fix-v5-guard-eee --depth=1 https://github.com/Autisticestradioluser/r8125.git "${SRC_DIR}/r8125"
+if [ "$_build_r8125" = "yes" ] && [ ! -d "${SRC_DIR}/r8125" ]; then
+    if [ "$_r8125_src" = "oldtag" ]; then
+        # Pin to 9.017.01 — last known-good before 9.018.00 link-flap regression
+        git clone --revision=68eb2645137288688583bbf3c111ec772b7d7327 --depth=1 https://github.com/Autisticestradioluser/r8125.git "${SRC_DIR}/r8125"
+    else
+        git clone --branch=rtl8125bp-fix-v6-aldps-eee-rpm --depth=1 https://github.com/Autisticestradioluser/r8125.git "${SRC_DIR}/r8125"
+    fi
+fi
 
 if [ "$_build_nvidia" = "yes" ]; then
     [ ! -f "${DOWNLOAD_DIR}/${_nv_pkg}.run" ] && wget -P "${DOWNLOAD_DIR}" "https://download.nvidia.com/XFree86/Linux-x86_64/${_nv_ver}/${_nv_pkg}.run"
