@@ -395,14 +395,18 @@ if [ "$_build_debug" = "yes" ]; then
     cp "${SRC_DIR}/${_srcname}/.config" "${HEADERS_DIR}/"
     cp "${SRC_DIR}/${_srcname}/Makefile" "${HEADERS_DIR}/"
     echo "${KERNEL_VERSION}" > "${HEADERS_DIR}/version"
+
+    # Remove dangling symlinks that reference source-tree paths (scripts/dtc, tools, etc.)
+    # These are not needed for out-of-tree module building from installed headers
+    find "${HEADERS_DIR}" -xtype l -delete 2>/dev/null || true
 fi
 
 fix_permissions() {
     local root="${INSTALL_DIR}"
     print_info "=== Fixing permissions for ${root} ==="
-    find "${root}" -type d -exec chmod 0755 {} +
-    find "${root}" -type f -exec chmod 0644 {} +
-    find "${root}" -perm -g=w -exec chmod g-w {} +
+    find "${root}" -type d -exec chmod 0755 {} + 2>/dev/null || true
+    find "${root}" -type f -exec chmod 0644 {} + 2>/dev/null || true
+    find "${root}" -perm -g=w -exec chmod g-w {} + 2>/dev/null || true
 }
 fix_permissions
 
