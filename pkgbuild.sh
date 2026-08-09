@@ -41,9 +41,9 @@ _autofdo_profile_name=${_autofdo_profile_name:-}
 _propeller=${_propeller:-no}
 _propeller_profiles=${_propeller_profiles:-no}
 _build_r8125=${_build_r8125:-yes}
-# r8125 source: "v6" (default, flap fix) or "oldtag" to pin to the
+# r8125 source: "v7" (default, flap fix) or "oldtag" to pin to the
 # last known-good version before the 9.018.00 regression
-_r8125_src=${_r8125_src:-v6}
+_r8125_src=${_r8125_src:-v7}
 
 # Package targets (replaces _build_mkinitcpiod_preset)
 _build_archpkg=${_build_archpkg:-yes}    # yes = build Arch .pkg.tar.zst + mkinitcpio preset
@@ -55,7 +55,7 @@ _minor=42
 _tagrel=1
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
-pkgrel=2
+pkgrel=3
 _srcver=${_major}.${_minor}-${_tagrel}
 _srcname=cachyos-${_srcver}
 
@@ -196,7 +196,7 @@ if [ "$_build_r8125" = "yes" ] && [ ! -d "${SRC_DIR}/r8125" ]; then
         git -C "${SRC_DIR}/r8125" fetch origin 68eb2645137288688583bbf3c111ec772b7d7327 --depth=1
         git -C "${SRC_DIR}/r8125" checkout 68eb2645137288688583bbf3c111ec772b7d7327
     else
-        git clone --branch=rtl8125bp-fix-v6-aldps-eee-rpm --depth=1 https://github.com/Autisticestradioluser/r8125.git "${SRC_DIR}/r8125"
+        git clone --branch=rtl8125bp-fix-v7-aldps-eee-rpm --depth=1 https://github.com/Autisticestradioluser/r8125.git "${SRC_DIR}/r8125"
     fi
 fi
 
