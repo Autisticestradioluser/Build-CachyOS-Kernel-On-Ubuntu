@@ -45,7 +45,7 @@ _build_r8125=${_build_r8125:-yes}
 # last known-good version before the 9.018.00 regression
 _r8125_src=${_r8125_src:-v7}
 _build_nvidia=${_build_nvidia:-no}
-_nv_ver=580.173.02
+_nv_ver=580.178.04
 _nv_pkg="NVIDIA-Linux-x86_64-${_nv_ver}"
 _nv_sha256=${_nv_sha256:-}
 
@@ -55,16 +55,16 @@ _build_deb=${_build_deb:-yes}            # yes = build Debian .deb
 
 # Kernel version info
 _major=7.1
-_minor=6
+_minor=8
 _tagrel=1
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
-pkgrel=3
+pkgrel=1
 _srcver=${_major}.${_minor}-${_tagrel}
 _srcname=cachyos-${_srcver}
 
 # Checksums (Update per release)
-_kernel_b2sum=${_kernel_b2sum:-d1a694cb55a5bf013987022b7d87d8430142f26686d52eaa33928685ec9116dd238dd6fa33eb91364e68bc33ca120ce82db35c1dc247d68f5556111aeff11537}
+_kernel_b2sum=${_kernel_b2sum:-6a198c07f5b3ff24e35972c0c25a30f4ec72ec4b986a926ec57aa3fa045bd72dc15845a3651b134715a1cd5efb62a1bb8800a19dc80cef2e0de70d01245e5eb0}
 _config_b2sum=${_config_b2sum:-a81b1a49b7fd277a8a1395e38696c435489808399527dc49436c9b36940d5c652c523622efe68d34dd191669d8838ab4c041000331279ccf77cdc11dc4baaca2}
 
 # GPG keys for signature verification
@@ -192,7 +192,7 @@ esac
 [ "$_cpusched" = "hardened" ] && wget -q -N -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/0001-hardened.patch"
 [[ "$_cpusched" == "rt" || "$_cpusched" == "rt-bore" ]] && wget -q -N -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/0001-rt-i915.patch"
 [[ "$_use_llvm_lto" != "none" ]] && [ ! -f "${DOWNLOAD_DIR}/dkms-clang.patch" ] && wget -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/dkms-clang.patch"
-[ "$_build_zfs" = "yes" ] && [ ! -d "${SRC_DIR}/zfs" ] && git clone --depth=1 https://github.com/cachyos/zfs.git "${SRC_DIR}/zfs" && git -C "${SRC_DIR}/zfs" fetch origin 6330a45b06d20125de679aae5f63ba14082671ef --depth=1 && git -C "${SRC_DIR}/zfs" checkout 6330a45b06d20125de679aae5f63ba14082671ef
+[ "$_build_zfs" = "yes" ] && [ ! -d "${SRC_DIR}/zfs" ] && git clone --depth=1 https://github.com/cachyos/zfs.git "${SRC_DIR}/zfs" && git -C "${SRC_DIR}/zfs" fetch origin c681af76c5a6a15caada25eb13090e41218c7831 --depth=1 && git -C "${SRC_DIR}/zfs" checkout c681af76c5a6a15caada25eb13090e41218c7831
 if [ "$_build_r8125" = "yes" ] && [ ! -d "${SRC_DIR}/r8125" ]; then
     if [ "$_r8125_src" = "oldtag" ]; then
         # Pin to 9.017.01 — last known-good before 9.018.00 link-flap regression
