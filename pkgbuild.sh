@@ -55,7 +55,7 @@ _build_deb=${_build_deb:-yes}            # yes = build Debian .deb
 
 # Kernel version info
 _major=7.2
-_minor=0
+_minor=1
 _tagrel=1
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
@@ -64,7 +64,7 @@ _srcver=${_major}.${_minor}-${_tagrel}
 _srcname=cachyos-${_srcver}
 
 # Checksums (Update per release)
-_kernel_b2sum=${_kernel_b2sum:-31474ec81ba911c6c65646695b052b77032742973a3b4d61a212c07431a7d3e952ade31f2864ffcba133d8b2a2d0359bb048ae7154147b9272689e7b4485cb36}
+_kernel_b2sum=${_kernel_b2sum:-d4b4acb09ed817c53e80cc8d51a2dcc77b2cb0db8e591ee9bb622f2de80be382e1aaaddd74f7b02322b7c2615415549b66e9949922405881ad08817a3ad073a8}
 _config_b2sum=${_config_b2sum:-21343697f5f1647aadbdec8a4aa477b10622e5ae04fa07fcf6f9bab67dece7180872676bdc49a90de5d273c2c13127c5812a7ca67dbd9edce3e26e8c38d358d1}
 
 # GPG keys for signature verification
@@ -192,7 +192,7 @@ esac
 [ "$_cpusched" = "hardened" ] && wget -q -N -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/0001-hardened.patch"
 [[ "$_cpusched" == "rt" || "$_cpusched" == "rt-bore" ]] && wget -q -N -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/0001-rt-i915.patch"
 [[ "$_use_llvm_lto" != "none" ]] && [ ! -f "${DOWNLOAD_DIR}/dkms-clang.patch" ] && wget -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/dkms-clang.patch"
-[ "$_build_zfs" = "yes" ] && [ ! -d "${SRC_DIR}/zfs" ] && git clone --depth=1 https://github.com/cachyos/zfs.git "${SRC_DIR}/zfs" && git -C "${SRC_DIR}/zfs" fetch origin 92163c55454ad016a4f5be0baca98f95229227df --depth=1 && git -C "${SRC_DIR}/zfs" checkout 92163c55454ad016a4f5be0baca98f95229227df
+[ "$_build_zfs" = "yes" ] && [ ! -d "${SRC_DIR}/zfs" ] && git clone --depth=1 https://github.com/cachyos/zfs.git "${SRC_DIR}/zfs" && git -C "${SRC_DIR}/zfs" fetch origin 71a9f9578616a90c3c14bb59629fb4d31bfd68d1 --depth=1 && git -C "${SRC_DIR}/zfs" checkout 71a9f9578616a90c3c14bb59629fb4d31bfd68d1
 if [ "$_build_r8125" = "yes" ] && [ ! -d "${SRC_DIR}/r8125" ]; then
     if [ "$_r8125_src" = "oldtag" ]; then
         # Pin to 9.017.01 — last known-good before 9.018.00 link-flap regression
