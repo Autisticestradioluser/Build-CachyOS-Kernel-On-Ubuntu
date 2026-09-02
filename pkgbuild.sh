@@ -15,7 +15,7 @@ print_step()    { echo -e "\n${GREEN}==>${NC} ${YELLOW}$1${NC}"; }
 # ======================== BUILD CONFIGURATION ========================
 # All options can be overridden via environment variables: _var=value ./script.sh
 _cachy_config=${_cachy_config:-yes}
-_cpusched=${_cpusched:-bore}             # bore, bmq, hardened, cachyos, eevdf, rt, rt-bore
+_cpusched=${_cpusched:-bore}             # bore, bmq, cachyos, eevdf, rt, rt-bore
 _makenconfig=${_makenconfig:-no}
 _makexconfig=${_makexconfig:-no}
 _localmodcfg=${_localmodcfg:-no}
@@ -51,7 +51,7 @@ _build_deb=${_build_deb:-yes}            # yes = build Debian .deb
 
 # Kernel version info
 _major=6.18
-_minor=42
+_minor=48
 _tagrel=1
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
@@ -60,7 +60,7 @@ _srcver=${_major}.${_minor}-${_tagrel}
 _srcname=cachyos-${_srcver}
 
 # Checksums (Update per release)
-_kernel_b2sum=${_kernel_b2sum:-e322057f183bf666741ec12d2d64f681d9ba7bc4e4326354656ca23be5ecfb5ab3ab2ef494ddb54605f4ff1d5bba5a08493760eea9a36860080eafdb369a0321}
+_kernel_b2sum=${_kernel_b2sum:-d2154c224eb68d5e105b11bb863d54d23c3727f64010ab0c566953aef8440b99c94fac30800758847a93898d507ab1d3176b7934c7537943f5be8b86a5d95a1e}
 _config_b2sum=${_config_b2sum:-81fafd3adcaf3b690d8d4791693e68c7ae921d103ebfd70e8d0ae15cd05ecde5e6672ae43c3a7875686d883c1f5b82d2c8b37b40aee8dcb0563913f9dd6469b6}
 
 # GPG keys for signature verification
@@ -180,12 +180,11 @@ fi
 [[ "$(b2sum "${DOWNLOAD_DIR}/config" | cut -d' ' -f1)" == "$_config_b2sum" ]] || print_error "Config b2sum mismatch"
 
 case "$_cpusched" in
-    cachyos|bore|rt-bore|hardened)
+    cachyos|bore|rt-bore)
         [ ! -f "${DOWNLOAD_DIR}/0001-bore-cachy.patch" ] && wget -P "${DOWNLOAD_DIR}" "${_patchsource}/sched/0001-bore-cachy.patch" ;;
     bmq)
         [ ! -f "${DOWNLOAD_DIR}/0001-prjc-cachy.patch" ] && wget -P "${DOWNLOAD_DIR}" "${_patchsource}/sched/0001-prjc-cachy.patch" ;;
 esac
-[ "$_cpusched" = "hardened" ] && wget -q -N -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/0001-hardened.patch"
 [[ "$_cpusched" == "rt" || "$_cpusched" == "rt-bore" ]] && wget -q -N -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/0001-rt-i915.patch"
 [[ "$_use_llvm_lto" != "none" ]] && [ ! -f "${DOWNLOAD_DIR}/dkms-clang.patch" ] && wget -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/dkms-clang.patch"
 [ "$_build_zfs" = "yes" ] && [ ! -d "${SRC_DIR}/zfs" ] && git clone --depth=1 https://github.com/cachyos/zfs.git "${SRC_DIR}/zfs" && git -C "${SRC_DIR}/zfs" fetch origin 6330a45b06d20125de679aae5f63ba14082671ef --depth=1 && git -C "${SRC_DIR}/zfs" checkout 6330a45b06d20125de679aae5f63ba14082671ef
@@ -212,10 +211,9 @@ echo "-cachyos-${_cpusched}" > localversion.20-pkgname
 print_step "Step 6: Applying Patches"
 [[ "$_use_llvm_lto" != "none" ]] && patch -Np1 < "${DOWNLOAD_DIR}/dkms-clang.patch"
 case "$_cpusched" in
-    cachyos|bore|rt-bore|hardened) patch -Np1 < "${DOWNLOAD_DIR}/0001-bore-cachy.patch" ;;
+    cachyos|bore|rt-bore) patch -Np1 < "${DOWNLOAD_DIR}/0001-bore-cachy.patch" ;;
     bmq) patch -Np1 < "${DOWNLOAD_DIR}/0001-prjc-cachy.patch" ;;
 esac
-[ "$_cpusched" = "hardened" ] && patch -Np1 < "${DOWNLOAD_DIR}/0001-hardened.patch"
 [[ "$_cpusched" == "rt" || "$_cpusched" == "rt-bore" ]] && patch -Np1 < "${DOWNLOAD_DIR}/0001-rt-i915.patch"
 
 print_step "Step 7: Configuring Kernel"
@@ -232,7 +230,7 @@ esac
 [ "$_cachy_config" = "yes" ] && scripts/config -e CACHY
 
 case "$_cpusched" in
-    cachyos|bore|hardened) scripts/config -e SCHED_BORE ;;
+    cachyos|bore) scripts/config -e SCHED_BORE ;;
     bmq) scripts/config -e SCHED_ALT -e SCHED_BMQ ;;
     rt) scripts/config -e PREEMPT_RT ;;
     rt-bore) scripts/config -e SCHED_BORE -e PREEMPT_RT ;;
