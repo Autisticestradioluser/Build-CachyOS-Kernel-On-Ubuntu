@@ -15,7 +15,7 @@ print_step()    { echo -e "\n${GREEN}==>${NC} ${YELLOW}$1${NC}"; }
 # ======================== BUILD CONFIGURATION ========================
 # All options can be overridden via environment variables: _var=value ./script.sh
 _cachy_config=${_cachy_config:-yes}
-_cpusched=${_cpusched:-bore}             # bore, bmq, hardened, cachyos, eevdf, rt, rt-bore
+_cpusched=${_cpusched:-bore}             # bore, bmq, cachyos, eevdf, rt, rt-bore
 _makenconfig=${_makenconfig:-no}
 _makexconfig=${_makexconfig:-no}
 _localmodcfg=${_localmodcfg:-no}
@@ -184,12 +184,11 @@ fi
 [[ "$(b2sum "${DOWNLOAD_DIR}/config" | cut -d' ' -f1)" == "$_config_b2sum" ]] || print_error "Config b2sum mismatch"
 
 case "$_cpusched" in
-    cachyos|bore|rt-bore|hardened)
+    cachyos|bore|rt-bore)
         [ ! -f "${DOWNLOAD_DIR}/0001-bore-cachy.patch" ] && wget -P "${DOWNLOAD_DIR}" "${_patchsource}/sched/0001-bore-cachy.patch" ;;
     bmq)
         [ ! -f "${DOWNLOAD_DIR}/0001-prjc-cachy.patch" ] && wget -P "${DOWNLOAD_DIR}" "${_patchsource}/sched/0001-prjc-cachy.patch" ;;
 esac
-[ "$_cpusched" = "hardened" ] && wget -q -N -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/0001-hardened.patch"
 [[ "$_cpusched" == "rt" || "$_cpusched" == "rt-bore" ]] && wget -q -N -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/0001-rt-i915.patch"
 [[ "$_use_llvm_lto" != "none" ]] && [ ! -f "${DOWNLOAD_DIR}/dkms-clang.patch" ] && wget -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/dkms-clang.patch"
 [ "$_build_zfs" = "yes" ] && [ ! -d "${SRC_DIR}/zfs" ] && git clone --depth=1 https://github.com/cachyos/zfs.git "${SRC_DIR}/zfs" && git -C "${SRC_DIR}/zfs" fetch origin 71a9f9578616a90c3c14bb59629fb4d31bfd68d1 --depth=1 && git -C "${SRC_DIR}/zfs" checkout 71a9f9578616a90c3c14bb59629fb4d31bfd68d1
@@ -236,10 +235,9 @@ fi
 print_step "Step 6: Applying Patches"
 [[ "$_use_llvm_lto" != "none" ]] && patch -Np1 < "${DOWNLOAD_DIR}/dkms-clang.patch"
 case "$_cpusched" in
-    cachyos|bore|rt-bore|hardened) patch -Np1 < "${DOWNLOAD_DIR}/0001-bore-cachy.patch" ;;
+    cachyos|bore|rt-bore) patch -Np1 < "${DOWNLOAD_DIR}/0001-bore-cachy.patch" ;;
     bmq) patch -Np1 < "${DOWNLOAD_DIR}/0001-prjc-cachy.patch" ;;
 esac
-[ "$_cpusched" = "hardened" ] && patch -Np1 < "${DOWNLOAD_DIR}/0001-hardened.patch"
 [[ "$_cpusched" == "rt" || "$_cpusched" == "rt-bore" ]] && patch -Np1 < "${DOWNLOAD_DIR}/0001-rt-i915.patch"
 
 # Apply NVIDIA KMS patch (fetched from repo raw GitHub URL)
@@ -262,7 +260,7 @@ esac
 [ "$_cachy_config" = "yes" ] && scripts/config -e CACHY
 
 case "$_cpusched" in
-    cachyos|bore|hardened) scripts/config -e SCHED_BORE ;;
+    cachyos|bore) scripts/config -e SCHED_BORE ;;
     bmq) scripts/config -e SCHED_ALT -e SCHED_BMQ ;;
     rt) scripts/config -e PREEMPT_RT ;;
     rt-bore) scripts/config -e SCHED_BORE -e PREEMPT_RT ;;
