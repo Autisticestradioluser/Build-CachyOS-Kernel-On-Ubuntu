@@ -15,7 +15,7 @@ print_step()    { echo -e "\n${GREEN}==>${NC} ${YELLOW}$1${NC}"; }
 # ======================== BUILD CONFIGURATION ========================
 # All options can be overridden via environment variables: _var=value ./script.sh
 _cachy_config=${_cachy_config:-yes}
-_cpusched=${_cpusched:-bore}             # bore, bmq, hardened, cachyos, eevdf, rt, rt-bore
+_cpusched=${_cpusched:-hardened}        # hardened (hardened branch only)
 _makenconfig=${_makenconfig:-no}
 _makexconfig=${_makexconfig:-no}
 _localmodcfg=${_localmodcfg:-no}
@@ -30,7 +30,7 @@ _tickrate=${_tickrate:-full}
 _preempt=${_preempt:-full}
 _hugepage=${_hugepage:-always}
 _processor_opt=${_processor_opt:-native}
-_use_llvm_lto=${_use_llvm_lto:-full}     # none, thin, full, thin-dist
+_use_llvm_lto=${_use_llvm_lto:-none}     # none, thin, full, thin-dist (hardened defaults to none)
 _use_lto_suffix=${_use_lto_suffix:-yes}
 _use_gcc_suffix=${_use_gcc_suffix:-no}
 _use_kcfi=${_use_kcfi:-no}
@@ -54,8 +54,8 @@ _build_archpkg=${_build_archpkg:-yes}    # yes = build Arch .pkg.tar.zst + mkini
 _build_deb=${_build_deb:-yes}            # yes = build Debian .deb
 
 # Kernel version info
-_major=7.2
-_minor=2
+_major=7.1
+_minor=8
 _tagrel=1
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
@@ -64,8 +64,8 @@ _srcver=${_major}.${_minor}-${_tagrel}
 _srcname=cachyos-${_srcver}
 
 # Checksums (Update per release)
-_kernel_b2sum=${_kernel_b2sum:-ef0dd68d31a0c51ec09c7025331ed821833965d04bead87151ec03e884ac48d699c098beea177e9a098d74d6f1c929def8052d1973712d60d213708f7c51d4ee}
-_config_b2sum=${_config_b2sum:-21343697f5f1647aadbdec8a4aa477b10622e5ae04fa07fcf6f9bab67dece7180872676bdc49a90de5d273c2c13127c5812a7ca67dbd9edce3e26e8c38d358d1}
+_kernel_b2sum=${_kernel_b2sum:-6a198c07f5b3ff24e35972c0c25a30f4ec72ec4b986a926ec57aa3fa045bd72dc15845a3651b134715a1cd5efb62a1bb8800a19dc80cef2e0de70d01245e5eb0}
+_config_b2sum=${_config_b2sum:-82733c4af6e47cfdb84820247c7ea9bc1d7361f18aa0de8112ecf6913a10c8723d13743d15944e64f4372a46ebbcf5969bc8d62952fc28939b0e9b81901eafe2}
 
 # GPG keys for signature verification
 _validpgpkeys=(
@@ -179,7 +179,7 @@ print_info "Verifying kernel signature..."
 gpg --batch --verify "${DOWNLOAD_DIR}/${_srcname}.tar.gz.asc" "${DOWNLOAD_DIR}/${_srcname}.tar.gz" || print_error "Kernel signature verification failed!"
 
 if [ ! -f "${DOWNLOAD_DIR}/config" ]; then
-    wget -O "${DOWNLOAD_DIR}/config" "https://raw.githubusercontent.com/CachyOS/linux-cachyos/refs/heads/master/linux-cachyos/config"
+    wget -O "${DOWNLOAD_DIR}/config" "https://raw.githubusercontent.com/CachyOS/linux-cachyos/refs/heads/master/linux-cachyos-hardened/config"
 fi
 [[ "$(b2sum "${DOWNLOAD_DIR}/config" | cut -d' ' -f1)" == "$_config_b2sum" ]] || print_error "Config b2sum mismatch"
 
