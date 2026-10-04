@@ -52,7 +52,7 @@ _build_deb=${_build_deb:-yes}            # yes = build Debian .deb
 # Kernel version info
 # noble-lts: 6.18.x LTS series
 _major=6.18
-_minor=52
+_minor=55
 _tagrel=1
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
@@ -61,7 +61,7 @@ _srcver=${_major}.${_minor}-${_tagrel}
 _srcname=cachyos-${_srcver}
 
 # Checksums (Update per release)
-_kernel_b2sum=${_kernel_b2sum:-80588ceec3ae2234a0396f9f5eedbca9162971c0f17f9ede19e1b7a8b2962077b061e5e4bdfa3c2af4466389f4474ce7e3a41250496772c84cd89c2efff1060d}
+_kernel_b2sum=${_kernel_b2sum:-c6a8dfea70fc3be12c254fbd77d8e11ce22f6aeab5323895680f85c0178144b1d32d55857da63ff95a236000f8eef5edc60b0576252da4b1a36b8c1994fe48e4}
 _config_b2sum=${_config_b2sum:-ce16b1ba8acf0b47d212dcafe33f12c85643c57bab78e2dc9000ee495532c0c15d921d085dd778e02014cbf498ccf87efd6eb918033ee0fcc8a5850a48d96ce8}
 
 # GPG keys for signature verification
