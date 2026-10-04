@@ -54,9 +54,9 @@ _build_archpkg=${_build_archpkg:-yes}    # yes = build Arch .pkg.tar.zst + mkini
 _build_deb=${_build_deb:-yes}            # yes = build Debian .deb
 
 # Kernel version info
-_major=7.1
-_minor=8
-_tagrel=1
+_major=7.2
+_minor=9
+_tagrel=2
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
 pkgrel=1
@@ -64,8 +64,8 @@ _srcver=${_major}.${_minor}-${_tagrel}
 _srcname=cachyos-${_srcver}
 
 # Checksums (Update per release)
-_kernel_b2sum=${_kernel_b2sum:-6a198c07f5b3ff24e35972c0c25a30f4ec72ec4b986a926ec57aa3fa045bd72dc15845a3651b134715a1cd5efb62a1bb8800a19dc80cef2e0de70d01245e5eb0}
-_config_b2sum=${_config_b2sum:-82733c4af6e47cfdb84820247c7ea9bc1d7361f18aa0de8112ecf6913a10c8723d13743d15944e64f4372a46ebbcf5969bc8d62952fc28939b0e9b81901eafe2}
+_kernel_b2sum=${_kernel_b2sum:-8a545c8da5cc1e0d803db9f761ee159733c963b40c594ba74f3723eab68abfd7e7a4ac92139a064cff65b0a0c742bf6989c5d05cd98f057a2ad9efd154c7df25}
+_config_b2sum=${_config_b2sum:-d1623bd0afd4bbf2f66e8eaa86b5bac76b53c92ce60af970d03b911b4362134754b1f1e7234a7583d1ef78c1fe9ef2a2dddeffafcccef6daa777db886defa637}
 
 # GPG keys for signature verification
 _validpgpkeys=(
