@@ -52,7 +52,7 @@ _build_deb=${_build_deb:-yes}            # yes = build Debian .deb
 # Kernel version info
 # noble-lts: 6.18.x LTS series
 _major=6.18
-_minor=50
+_minor=52
 _tagrel=1
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
@@ -61,7 +61,7 @@ _srcver=${_major}.${_minor}-${_tagrel}
 _srcname=cachyos-${_srcver}
 
 # Checksums (Update per release)
-_kernel_b2sum=${_kernel_b2sum:-eba5ee0299dcba566706feb1af00f58bb49bf5f8b20463f2bb6f279fb5e4e3834259cc85f787e208238eeeb42a09a184664ecb01635e1c273e299d474e81a6e5}
+_kernel_b2sum=${_kernel_b2sum:-80588ceec3ae2234a0396f9f5eedbca9162971c0f17f9ede19e1b7a8b2962077b061e5e4bdfa3c2af4466389f4474ce7e3a41250496772c84cd89c2efff1060d}
 _config_b2sum=${_config_b2sum:-ce16b1ba8acf0b47d212dcafe33f12c85643c57bab78e2dc9000ee495532c0c15d921d085dd778e02014cbf498ccf87efd6eb918033ee0fcc8a5850a48d96ce8}
 
 # GPG keys for signature verification
@@ -188,7 +188,7 @@ case "$_cpusched" in
 esac
 [[ "$_cpusched" == "rt" || "$_cpusched" == "rt-bore" ]] && wget -q -N -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/0001-rt-i915.patch"
 [[ "$_use_llvm_lto" != "none" ]] && [ ! -f "${DOWNLOAD_DIR}/dkms-clang.patch" ] && wget -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/dkms-clang.patch"
-[ "$_build_zfs" = "yes" ] && [ ! -d "${SRC_DIR}/zfs" ] && git clone --depth=1 https://github.com/cachyos/zfs.git "${SRC_DIR}/zfs" && git -C "${SRC_DIR}/zfs" fetch origin 6330a45b06d20125de679aae5f63ba14082671ef --depth=1 && git -C "${SRC_DIR}/zfs" checkout 6330a45b06d20125de679aae5f63ba14082671ef
+[ "$_build_zfs" = "yes" ] && [ ! -d "${SRC_DIR}/zfs" ] && git clone --depth=1 https://github.com/cachyos/zfs.git "${SRC_DIR}/zfs" && git -C "${SRC_DIR}/zfs" fetch origin 71a9f9578616a90c3c14bb59629fb4d31bfd68d1 --depth=1 && git -C "${SRC_DIR}/zfs" checkout 71a9f9578616a90c3c14bb59629fb4d31bfd68d1
 if [ "$_build_r8125" = "yes" ] && [ ! -d "${SRC_DIR}/r8125" ]; then
     if [ "$_r8125_src" = "oldtag" ]; then
         # Pin to 9.017.01 — last known-good before 9.018.00 link-flap regression
