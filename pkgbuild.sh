@@ -54,8 +54,8 @@ _build_archpkg=${_build_archpkg:-yes}    # yes = build Arch .pkg.tar.zst + mkini
 _build_deb=${_build_deb:-yes}            # yes = build Debian .deb
 
 # Kernel version info
-_major=7.2
-_minor=11
+_major=7.3
+_minor=1
 _tagrel=1
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
@@ -64,8 +64,8 @@ _srcver=${_major}.${_minor}-${_tagrel}
 _srcname=cachyos-${_srcver}
 
 # Checksums (Update per release)
-_kernel_b2sum=${_kernel_b2sum:-7d109d528db5d5d746f6c4c21e7f46ca7ade14fb7474e12fb39ce64369b71c7be92715db86b48823cdf0670b86d41d1f633a69d2e87038f2800b756d1b375842}
-_config_b2sum=${_config_b2sum:-21343697f5f1647aadbdec8a4aa477b10622e5ae04fa07fcf6f9bab67dece7180872676bdc49a90de5d273c2c13127c5812a7ca67dbd9edce3e26e8c38d358d1}
+_kernel_b2sum=${_kernel_b2sum:-b744477e1202ae7c63020645fdd923625da6edd2bde61d01d9c7755e6d9628fc3fb00e615261f02a5c503d5c890cb9f8e1e9f068aea7ed01fda45b2d64e7216a}
+_config_b2sum=${_config_b2sum:-e21485bd3d917be15837eb51ddb9aeb4a0df5fb7b18ccbf1d520aff2340833935e441f634e4ae8482a21ff38a9dec9f320bec3459aedf15087909b6eb2cff7db}
 
 # GPG keys for signature verification
 _validpgpkeys=(
@@ -179,7 +179,7 @@ print_info "Verifying kernel signature..."
 gpg --batch --verify "${DOWNLOAD_DIR}/${_srcname}.tar.gz.asc" "${DOWNLOAD_DIR}/${_srcname}.tar.gz" || print_error "Kernel signature verification failed!"
 
 if [ ! -f "${DOWNLOAD_DIR}/config" ]; then
-    wget -O "${DOWNLOAD_DIR}/config" "https://raw.githubusercontent.com/CachyOS/linux-cachyos/6676e72b85eb9e30d079a8c3dcdf93aedd1e8226/linux-cachyos/config"
+    wget -O "${DOWNLOAD_DIR}/config" "https://raw.githubusercontent.com/CachyOS/linux-cachyos/cbd3c2573e7281c006e8f4dbf4e2dd781542d7f7/linux-cachyos/config"
 fi
 [[ "$(b2sum "${DOWNLOAD_DIR}/config" | cut -d' ' -f1)" == "$_config_b2sum" ]] || print_error "Config b2sum mismatch"
 
