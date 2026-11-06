@@ -45,7 +45,7 @@ _build_r8125=${_build_r8125:-yes}
 # last known-good version before the 9.018.00 regression
 _r8125_src=${_r8125_src:-v7}
 _build_nvidia=${_build_nvidia:-no}
-_nv_ver=580.178.04
+_nv_ver=580.196.07
 _nv_pkg="NVIDIA-Linux-x86_64-${_nv_ver}"
 _nv_sha256=${_nv_sha256:-}
 
@@ -266,7 +266,7 @@ case "$_cpusched" in
     rt-bore) scripts/config -e SCHED_BORE -e PREEMPT_RT ;;
 esac
 
-[ "$_use_kcfi" = "yes" ] && scripts/config -e ARCH_SUPPORTS_CFI_CLANG -e CFI_CLANG -e CFI_AUTO_DEFAULT
+[ "$_use_kcfi" = "yes" ] && scripts/config -e CFI
 
 case "$_use_llvm_lto" in
     thin) scripts/config -e LTO_CLANG_THIN ;; thin-dist) scripts/config -e LTO_CLANG_THIN_DIST ;;
