@@ -52,7 +52,7 @@ _build_deb=${_build_deb:-yes}            # yes = build Debian .deb
 # Kernel version info
 # noble-lts: 6.18.x LTS series
 _major=6.18
-_minor=55
+_minor=60
 _tagrel=1
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
@@ -61,7 +61,7 @@ _srcver=${_major}.${_minor}-${_tagrel}
 _srcname=cachyos-${_srcver}
 
 # Checksums (Update per release)
-_kernel_b2sum=${_kernel_b2sum:-c6a8dfea70fc3be12c254fbd77d8e11ce22f6aeab5323895680f85c0178144b1d32d55857da63ff95a236000f8eef5edc60b0576252da4b1a36b8c1994fe48e4}
+_kernel_b2sum=${_kernel_b2sum:-073e7f6266a1336f88828933c9c17d48c486271075b8bb62351d454b8cc0d805afd91182129a36eb93aa0f51a8c2a6e82c07fc4b10a20f5cb000574bfcea97d7}
 _config_b2sum=${_config_b2sum:-ce16b1ba8acf0b47d212dcafe33f12c85643c57bab78e2dc9000ee495532c0c15d921d085dd778e02014cbf498ccf87efd6eb918033ee0fcc8a5850a48d96ce8}
 
 # GPG keys for signature verification
@@ -237,7 +237,7 @@ case "$_cpusched" in
     rt-bore) scripts/config -e SCHED_BORE -e PREEMPT_RT ;;
 esac
 
-[ "$_use_kcfi" = "yes" ] && scripts/config -e ARCH_SUPPORTS_CFI_CLANG -e CFI_CLANG -e CFI_AUTO_DEFAULT
+[ "$_use_kcfi" = "yes" ] && scripts/config -e CFI
 
 case "$_use_llvm_lto" in
     thin) scripts/config -e LTO_CLANG_THIN ;; thin-dist) scripts/config -e LTO_CLANG_THIN_DIST ;;
