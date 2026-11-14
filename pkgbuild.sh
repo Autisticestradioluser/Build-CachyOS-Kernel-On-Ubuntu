@@ -55,7 +55,7 @@ _build_deb=${_build_deb:-yes}            # yes = build Debian .deb
 
 # Kernel version info
 _major=7.3
-_minor=3
+_minor=4
 _tagrel=1
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
@@ -64,8 +64,8 @@ _srcver=${_major}.${_minor}-${_tagrel}
 _srcname=cachyos-${_srcver}
 
 # Checksums (Update per release)
-_kernel_b2sum=${_kernel_b2sum:-15dfdf1513a06b087a9f8b9fee00a1e48fa95ee80caefc55d646a14cab1d0050a7c0c0209164fa42d79d3281143e559b148bc7c623a85328d3dd70aa01579c90}
-_config_b2sum=${_config_b2sum:-e21485bd3d917be15837eb51ddb9aeb4a0df5fb7b18ccbf1d520aff2340833935e441f634e4ae8482a21ff38a9dec9f320bec3459aedf15087909b6eb2cff7db}
+_kernel_b2sum=${_kernel_b2sum:-438505cf485af55d63f82675df5d57c8f584abad72c1aacf5e126e8cdc5b2a0153e05ec017769aaf70fc081e3969ba3e83760556a6d53d3f7a0641961c71cce2}
+_config_b2sum=${_config_b2sum:-1857e2984cb148c524dc178e41a45dae8b1c649267150fe29b86bd3fc75358c6e1aa203d70f152d0f62fc6ac37de81cfa5e5e06f5cb3716eb7bed36525416fe1}
 
 # GPG keys for signature verification
 _validpgpkeys=(
@@ -179,7 +179,7 @@ print_info "Verifying kernel signature..."
 gpg --batch --verify "${DOWNLOAD_DIR}/${_srcname}.tar.gz.asc" "${DOWNLOAD_DIR}/${_srcname}.tar.gz" || print_error "Kernel signature verification failed!"
 
 if [ ! -f "${DOWNLOAD_DIR}/config" ]; then
-    wget -O "${DOWNLOAD_DIR}/config" "https://raw.githubusercontent.com/CachyOS/linux-cachyos/cbd3c2573e7281c006e8f4dbf4e2dd781542d7f7/linux-cachyos/config"
+    wget -O "${DOWNLOAD_DIR}/config" "https://raw.githubusercontent.com/CachyOS/linux-cachyos/8c1b37292a40209e9edd6df5bc08aec71236550f/linux-cachyos/config"
 fi
 [[ "$(b2sum "${DOWNLOAD_DIR}/config" | cut -d' ' -f1)" == "$_config_b2sum" ]] || print_error "Config b2sum mismatch"
 
@@ -191,7 +191,7 @@ case "$_cpusched" in
 esac
 [[ "$_cpusched" == "rt" || "$_cpusched" == "rt-bore" ]] && wget -q -N -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/0001-rt-i915.patch"
 [[ "$_use_llvm_lto" != "none" ]] && [ ! -f "${DOWNLOAD_DIR}/dkms-clang.patch" ] && wget -P "${DOWNLOAD_DIR}" "${_patchsource}/misc/dkms-clang.patch"
-[ "$_build_zfs" = "yes" ] && [ ! -d "${SRC_DIR}/zfs" ] && git clone --depth=1 https://github.com/cachyos/zfs.git "${SRC_DIR}/zfs" && git -C "${SRC_DIR}/zfs" fetch origin 71a9f9578616a90c3c14bb59629fb4d31bfd68d1 --depth=1 && git -C "${SRC_DIR}/zfs" checkout 71a9f9578616a90c3c14bb59629fb4d31bfd68d1
+[ "$_build_zfs" = "yes" ] && [ ! -d "${SRC_DIR}/zfs" ] && git clone --depth=1 https://github.com/cachyos/zfs.git "${SRC_DIR}/zfs" && git -C "${SRC_DIR}/zfs" fetch origin fb48c76e17d3e0092fbba430a9eec1960e1b9961 --depth=1 && git -C "${SRC_DIR}/zfs" checkout fb48c76e17d3e0092fbba430a9eec1960e1b9961
 if [ "$_build_r8125" = "yes" ] && [ ! -d "${SRC_DIR}/r8125" ]; then
     if [ "$_r8125_src" = "oldtag" ]; then
         # Pin to 9.017.01 — last known-good before 9.018.00 link-flap regression
