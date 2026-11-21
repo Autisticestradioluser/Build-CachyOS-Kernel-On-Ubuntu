@@ -6,7 +6,7 @@ set -eo pipefail
 
 # ==============================================================================
 # USER CONFIGURATION - EDIT HERE
-# Every value below can also be overridden at runtime: _var=value ./pkgbuild.sh
+# values below can also be overridden at runtime: _var=value ./pkgbuild.sh
 # ==============================================================================
 # --- Package targets ---
 _build_archpkg=${_build_archpkg:-no}    # yes = Arch .pkg.tar.zst + mkinitcpio preset
@@ -63,18 +63,6 @@ print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 print_error()   { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 print_step()    { echo -e "\n${GREEN}==>${NC} ${YELLOW}$1${NC}"; }
 
-# ======================== ACTIVE CONFIGURATION ========================
-_onoff() { [ "$1" = "yes" ] && echo -e "${GREEN}yes${NC}" || echo -e "${YELLOW}$1${NC}"; }
-print_step "Active configuration"
-print_info "Kernel:   ${_srcver}-cachyos-${_cpusched} (pkgrel ${pkgrel})"
-print_info "Packages: Debian=$(_onoff "$_build_deb"), headers=$(_onoff "$_build_debug"), Arch=$(_onoff "$_build_archpkg")"
-print_info "CPU:      ${_cpusched} / ${_preempt} preempt / ${_HZ_ticks}Hz / ${_processor_opt} / LLVM LTO ${_use_llvm_lto}"
-print_info "Extras:   ZFS=$(_onoff "$_build_zfs"), r8125=$(_onoff "$_build_r8125"), NVIDIA=$(_onoff "$_build_nvidia")"
-if [ "$_build_nvidia" = "yes" ]; then
-    print_info "NVIDIA:   userspace=$(_onoff "$_nv_userspace"), nouveau blacklist=$(_onoff "$_blacklist_nouveau"), driver ${_nv_ver}"
-    print_info "CUDA:     ${_cuda_ver} (setup=$(_onoff "$_cuda_setup"), dependency: ${_cuda_toolkit_dep})"
-fi
-
 # Kernel version info
 _major=7.3
 _minor=5
@@ -88,6 +76,18 @@ _srcname=cachyos-${_srcver}
 # Checksums (Update per release)
 _kernel_b2sum=${_kernel_b2sum:-34499a44a378dd7a330f2fa821ebdef10f477af461e1e40f193a85c188133627c885ddd636693c4ec895c1e22ffe6d0378948ee6c51a6d9a36dca262784f916a}
 _config_b2sum=${_config_b2sum:-c96bc76381a6aa601ae39663dd8c21cd2f4503d6d13ee944770a5b46f70175b9280159c7ff3a2fa3d29ada7fe82cdf95ca6715d3d9489a27b044154db0355789}
+
+# ======================== ACTIVE CONFIGURATION ========================
+_onoff() { [ "$1" = "yes" ] && echo -e "${GREEN}yes${NC}" || echo -e "${YELLOW}$1${NC}"; }
+print_step "Active configuration"
+print_info "Kernel:   ${_srcver}-cachyos-${_cpusched} (pkgrel ${pkgrel})"
+print_info "Packages: Debian=$(_onoff "$_build_deb"), headers=$(_onoff "$_build_debug"), Arch=$(_onoff "$_build_archpkg")"
+print_info "CPU:      ${_cpusched} / ${_preempt} preempt / ${_HZ_ticks}Hz / ${_processor_opt} / LLVM LTO ${_use_llvm_lto}"
+print_info "Extras:   ZFS=$(_onoff "$_build_zfs"), r8125=$(_onoff "$_build_r8125"), NVIDIA=$(_onoff "$_build_nvidia")"
+if [ "$_build_nvidia" = "yes" ]; then
+    print_info "NVIDIA:   userspace=$(_onoff "$_nv_userspace"), nouveau blacklist=$(_onoff "$_blacklist_nouveau"), driver ${_nv_ver}"
+    print_info "CUDA:     ${_cuda_ver} (setup=$(_onoff "$_cuda_setup"), dependency: ${_cuda_toolkit_dep})"
+fi
 
 # GPG keys for signature verification
 _validpgpkeys=(
