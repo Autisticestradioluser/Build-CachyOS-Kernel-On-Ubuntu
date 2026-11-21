@@ -4,7 +4,58 @@
 # Outputs split Arch (.pkg.tar.zst) and Debian (.deb) packages for image & headers
 set -eo pipefail
 
-# ======================== COLOR & UTILS ========================
+# ==============================================================================
+# USER CONFIGURATION - EDIT HERE
+# Every value below can also be overridden at runtime: _var=value ./pkgbuild.sh
+# ==============================================================================
+# --- Package targets ---
+_build_archpkg=${_build_archpkg:-no}    # yes = Arch .pkg.tar.zst + mkinitcpio preset
+_build_deb=${_build_deb:-yes}            # yes = Debian .deb
+_build_debug=${_build_debug:-yes}        # yes = build & package kernel headers
+_build_r8125=${_build_r8125:-yes}        # Realtek r8125 out-of-tree driver
+_build_zfs=${_build_zfs:-no}             # ZFS kernel modules
+
+# --- CPU / scheduler / performance ---
+_cpusched=${_cpusched:-bore}            # bore, bmq, cachyos, eevdf, rt, rt-bore
+_preempt=${_preempt:-full}               # full, lazy, voluntary, none
+_HZ_ticks=${_HZ_ticks:-250}              # 1000HZ, 750Hz, 600 Hz, 500Hz, 300Hz, 250Hz, 100Hz
+_tickrate=${_tickrate:-full}             # periodic, idle, full
+_default_gov=${_default_gov:-performance} # performance, powersave, schedutil
+_processor_opt=${_processor_opt:-native} # native, zen4, generic_v1..v4
+_use_llvm_lto=${_use_llvm_lto:-full}     # none, thin, full, thin-dist
+_use_lto_suffix=${_use_lto_suffix:-yes}
+_use_gcc_suffix=${_use_gcc_suffix:-no}
+_cc_harder=${_cc_harder:-yes}             # -O3
+_tcp_bbr3=${_tcp_bbr3:-yes}
+_hugepage=${_hugepage:-always}           # always, madvise
+_use_kcfi=${_use_kcfi:-no}
+
+# --- Kernel configuration ---
+_cachy_config=${_cachy_config:-yes}
+_makenconfig=${_makenconfig:-no}
+_makexconfig=${_makexconfig:-no}
+_use_current=${_use_current:-no}
+_localmodcfg=${_localmodcfg:-no}
+_localmodcfg_path=${_localmodcfg_path:-"$HOME/.config/modprobed.db"}
+_autofdo=${_autofdo:-no}
+_autofdo_profile_name=${_autofdo_profile_name:-}
+_propeller=${_propeller:-no}
+_propeller_profiles=${_propeller_profiles:-no}
+_r8125_src=${_r8125_src:-v7}             # v7 (flap fix) or oldtag (9.017.01)
+
+# --- NVIDIA / CUDA ---
+_build_nvidia=${_build_nvidia:-yes}      # build proprietary modules from the .run
+_blacklist_nouveau=${_blacklist_nouveau:-yes}  # keep nouveau from claiming the GPU
+_nv_userspace=${_nv_userspace:-yes}      # bundle matching user-space into the NVIDIA deb
+_nv_ver=580.196.07                       # driver version (must match the .run)
+_nv_sha256=${_nv_sha256:-}
+_cuda_setup=${_cuda_setup:-yes}          # ship nvcc PATH profile + toolkit dependency
+_cuda_ver=${_cuda_ver:-12-9}             # 12.9 is the last toolkit targeting Pascal
+_cuda_toolkit_dep=${_cuda_toolkit_dep:-recommends}  # none | recommends | depends
+_nv_pkg="NVIDIA-Linux-x86_64-${_nv_ver}"
+
+
+# ======================== COLOR & UTILS - DO NOT EDIT BELOW THIS ========================
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
 print_info()    { echo -e "${BLUE}[INFO]${NC} $1"; }
 print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
@@ -12,51 +63,22 @@ print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 print_error()   { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 print_step()    { echo -e "\n${GREEN}==>${NC} ${YELLOW}$1${NC}"; }
 
-# ======================== BUILD CONFIGURATION ========================
-# All options can be overridden via environment variables: _var=value ./script.sh
-_cachy_config=${_cachy_config:-yes}
-_cpusched=${_cpusched:-bore}             # bore, bmq, cachyos, eevdf, rt, rt-bore
-_makenconfig=${_makenconfig:-no}
-_makexconfig=${_makexconfig:-no}
-_localmodcfg=${_localmodcfg:-no}
-_localmodcfg_path=${_localmodcfg_path:-"$HOME/.config/modprobed.db"}
-_use_current=${_use_current:-no}
-_cc_harder=${_cc_harder:-yes}
-# Default CPU governor: performance, powersave, or schedutil (upstream CachyOS default)
-_default_gov=${_default_gov:-performance}
-_tcp_bbr3=${_tcp_bbr3:-yes}
-_HZ_ticks=${_HZ_ticks:-500}
-_tickrate=${_tickrate:-full}
-_preempt=${_preempt:-full}
-_hugepage=${_hugepage:-always}
-_processor_opt=${_processor_opt:-native}
-_use_llvm_lto=${_use_llvm_lto:-full}     # none, thin, full, thin-dist
-_use_lto_suffix=${_use_lto_suffix:-yes}
-_use_gcc_suffix=${_use_gcc_suffix:-no}
-_use_kcfi=${_use_kcfi:-no}
-_build_zfs=${_build_zfs:-no}
-_build_debug=${_build_debug:-no}         # yes = build & package headers
-_autofdo=${_autofdo:-no}
-_autofdo_profile_name=${_autofdo_profile_name:-}
-_propeller=${_propeller:-no}
-_propeller_profiles=${_propeller_profiles:-no}
-_build_r8125=${_build_r8125:-yes}
-# r8125 source: "v7" (default, flap fix) or "oldtag" to pin to the
-# last known-good version before the 9.018.00 regression
-_r8125_src=${_r8125_src:-v7}
-_build_nvidia=${_build_nvidia:-no}
-_nv_ver=580.196.07
-_nv_pkg="NVIDIA-Linux-x86_64-${_nv_ver}"
-_nv_sha256=${_nv_sha256:-}
-
-# Package targets (replaces _build_mkinitcpiod_preset)
-_build_archpkg=${_build_archpkg:-yes}    # yes = build Arch .pkg.tar.zst + mkinitcpio preset
-_build_deb=${_build_deb:-yes}            # yes = build Debian .deb
+# ======================== ACTIVE CONFIGURATION ========================
+_onoff() { [ "$1" = "yes" ] && echo -e "${GREEN}yes${NC}" || echo -e "${YELLOW}$1${NC}"; }
+print_step "Active configuration"
+print_info "Kernel:   ${_srcver}-cachyos-${_cpusched} (pkgrel ${pkgrel})"
+print_info "Packages: Debian=$(_onoff "$_build_deb"), headers=$(_onoff "$_build_debug"), Arch=$(_onoff "$_build_archpkg")"
+print_info "CPU:      ${_cpusched} / ${_preempt} preempt / ${_HZ_ticks}Hz / ${_processor_opt} / LLVM LTO ${_use_llvm_lto}"
+print_info "Extras:   ZFS=$(_onoff "$_build_zfs"), r8125=$(_onoff "$_build_r8125"), NVIDIA=$(_onoff "$_build_nvidia")"
+if [ "$_build_nvidia" = "yes" ]; then
+    print_info "NVIDIA:   userspace=$(_onoff "$_nv_userspace"), nouveau blacklist=$(_onoff "$_blacklist_nouveau"), driver ${_nv_ver}"
+    print_info "CUDA:     ${_cuda_ver} (setup=$(_onoff "$_cuda_setup"), dependency: ${_cuda_toolkit_dep})"
+fi
 
 # Kernel version info
 _major=7.3
-_minor=4
-_tagrel=1
+_minor=5
+_tagrel=2
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
 pkgrel=1
@@ -179,7 +201,7 @@ print_info "Verifying kernel signature..."
 gpg --batch --verify "${DOWNLOAD_DIR}/${_srcname}.tar.gz.asc" "${DOWNLOAD_DIR}/${_srcname}.tar.gz" || print_error "Kernel signature verification failed!"
 
 if [ ! -f "${DOWNLOAD_DIR}/config" ]; then
-    wget -O "${DOWNLOAD_DIR}/config" "https://raw.githubusercontent.com/CachyOS/linux-cachyos/8c1b37292a40209e9edd6df5bc08aec71236550f/linux-cachyos/config"
+    wget -O "${DOWNLOAD_DIR}/config" "https://raw.githubusercontent.com/CachyOS/linux-cachyos/6c4d2ba46a5ed60c88c7d49c77b0fd1c500c2df5/linux-cachyos/config"
 fi
 [[ "$(b2sum "${DOWNLOAD_DIR}/config" | cut -d' ' -f1)" == "$_config_b2sum" ]] || print_error "Config b2sum mismatch"
 
@@ -481,6 +503,134 @@ fix_permissions
 # ======================== PACKAGING ========================
 print_step "Step 10: Packaging"
 
+## nvidia helper functions ## 
+# nouveau binds NVIDIA GPUs before the proprietary module can probe them, so
+# keep it from loading. Ships only in the NVIDIA packages, never the base image.
+install_nouveau_blacklist() {
+    local pkgroot="$1"
+    mkdir -p "${pkgroot}/etc/modprobe.d"
+    cat > "${pkgroot}/etc/modprobe.d/blacklist-cachyos-nouveau.conf" <<'EOF'
+blacklist nouveau
+blacklist lbm-nouveau
+options nouveau modeset=0
+alias nouveau off
+alias lbm-nouveau off
+install nouveau /bin/false
+EOF
+}
+
+# Install the complete user-space from the extracted NVIDIA .run into a Debian
+# package root. Excludes only the kernel sources, 32-bit compat and installer
+# internals. Paths follow Ubuntu multiarch conventions so ldconfig finds them.
+install_nvidia_userspace() {
+    local pkgroot="$1" srcdir="$2" ver="$3"
+    local libdir="${pkgroot}/usr/lib/x86_64-linux-gnu"
+    local bindir="${pkgroot}/usr/bin"
+
+    mkdir -p "${libdir}" "${bindir}" \
+        "${pkgroot}/usr/lib/xorg/modules/drivers" \
+        "${pkgroot}/usr/lib/xorg/modules/extensions" \
+        "${pkgroot}/usr/lib/x86_64-linux-gnu/vdpau" \
+        "${pkgroot}/usr/lib/nvidia/wine" \
+        "${pkgroot}/usr/lib/firmware/nvidia/${ver}" \
+        "${pkgroot}/usr/lib/systemd/system" \
+        "${pkgroot}/usr/lib/udev/rules.d" \
+        "${pkgroot}/usr/share/man/man1" \
+        "${pkgroot}/usr/share/nvidia" \
+        "${pkgroot}/usr/share/vulkan/icd.d" \
+        "${pkgroot}/usr/share/vulkan/implicit_layer.d" \
+        "${pkgroot}/usr/share/egl/egl_external_platform.d" \
+        "${pkgroot}/usr/share/X11/xorg.conf.d" \
+        "${pkgroot}/etc/OpenCL/vendors"
+
+    # Shared libraries -> multiarch dir. Skip vendor-neutral libglvnd/OpenCL
+    # loader files (provided by Ubuntu's libglvnd0 / ocl-icd-libopencl1) and
+    # libs that live in dedicated dirs.
+    while IFS= read -r f; do
+        local base
+        base="$(basename "$f")"
+        case "$base" in
+            libGL.so.*|libGLX.so.0|libGLdispatch.so.0|libOpenGL.so.0|libEGL.so.*|\
+            libGLESv1_CM.so.*|libGLESv2.so.*|libOpenCL.so.*|\
+            libvdpau_nvidia.so.*|libglxserver_nvidia.so.*) continue ;;
+        esac
+        cp -a "$f" "${libdir}/"
+    done < <(find "${srcdir}" -maxdepth 1 -type f -name '*.so.*' | sort)
+
+    # The .run ships no symlinks; create the SONAME links ldconfig/apps expect.
+    while IFS= read -r f; do
+        local soname base
+        soname="$(objdump -p "$f" 2>/dev/null | awk '/SONAME/{print $2; exit}')"
+        base="$(basename "$f")"
+        if [ -n "$soname" ] && [ "$soname" != "$base" ]; then
+            ln -sfn "$base" "${libdir}/${soname}"
+        fi
+    done < <(find "${libdir}" -maxdepth 1 -type f -name '*.so.*' | sort)
+
+    # Binaries
+    for b in nvidia-smi nvidia-modprobe nvidia-persistenced nvidia-settings \
+             nvidia-xconfig nvidia-debugdump nvidia-pcc nvidia-ngx-updater nvidia-bug-report.sh; do
+        [ -f "${srcdir}/${b}" ] && cp -a "${srcdir}/${b}" "${bindir}/"
+    done
+    # nvidia-modprobe creates /dev/nvidia* and loads nvidia-uvm for unprivileged
+    # CUDA processes; NVIDIA ships it setuid root for this reason.
+    chmod 4755 "${bindir}/nvidia-modprobe" 2>/dev/null || true
+
+    # Xorg driver and GLX server module
+    [ -f "${srcdir}/nvidia_drv.so" ] && cp -a "${srcdir}/nvidia_drv.so" "${pkgroot}/usr/lib/xorg/modules/drivers/"
+    find "${srcdir}" -maxdepth 1 -type f -name 'libglxserver_nvidia.so.*' \
+        -exec cp -a {} "${pkgroot}/usr/lib/xorg/modules/extensions/" \; 2>/dev/null || true
+    find "${srcdir}" -maxdepth 1 -type f -name 'libvdpau_nvidia.so.*' \
+        -exec cp -a {} "${libdir}/vdpau/" \; 2>/dev/null || true
+
+    # Vendor/config files
+    [ -f "${srcdir}/nvidia.icd" ] && cp -a "${srcdir}/nvidia.icd" "${pkgroot}/etc/OpenCL/vendors/"
+    for j in nvidia_icd.json nvidia_icd_vksc.json; do
+        [ -f "${srcdir}/${j}" ] && cp -a "${srcdir}/${j}" "${pkgroot}/usr/share/vulkan/icd.d/"
+    done
+    [ -f "${srcdir}/nvidia_layers.json" ] && cp -a "${srcdir}/nvidia_layers.json" "${pkgroot}/usr/share/vulkan/implicit_layer.d/"
+    for j in 10_nvidia.json 10_nvidia_wayland.json 15_nvidia_gbm.json 20_nvidia_xcb.json 20_nvidia_xlib.json; do
+        [ -f "${srcdir}/${j}" ] && cp -a "${srcdir}/${j}" "${pkgroot}/usr/share/egl/egl_external_platform.d/"
+    done
+    [ -f "${srcdir}/nvidia-drm-outputclass.conf" ] && cp -a "${srcdir}/nvidia-drm-outputclass.conf" "${pkgroot}/usr/share/X11/xorg.conf.d/"
+    for f in nvidia-application-profiles-* nvoptix.bin sandboxutils-filelist.json; do
+        [ -f "${srcdir}/${f}" ] && cp -a "${srcdir}/${f}" "${pkgroot}/usr/share/nvidia/"
+    done
+    for dll in nvngx.dll _nvngx.dll nvngx_dlssg.dll; do
+        [ -f "${srcdir}/${dll}" ] && cp -a "${srcdir}/${dll}" "${pkgroot}/usr/lib/nvidia/wine/"
+    done
+
+    # GSP firmware, systemd sleep/power units, man pages
+    [ -d "${srcdir}/firmware" ] && cp -a "${srcdir}/firmware/." "${pkgroot}/usr/lib/firmware/nvidia/${ver}/"
+    find "${srcdir}/systemd" -type f -name '*.service' \
+        -exec cp -a {} "${pkgroot}/usr/lib/systemd/system/" \; 2>/dev/null || true
+    find "${srcdir}" -maxdepth 1 -type f -name '*.1.gz' \
+        -exec cp -a {} "${pkgroot}/usr/share/man/man1/" \; 2>/dev/null || true
+
+    # Device nodes: with no user-space installed there are no /dev/nvidia* nodes.
+    # nvidia-modprobe creates them and loads nvidia-uvm on module/device events.
+    cat > "${pkgroot}/usr/lib/udev/rules.d/70-nvidia.rules" <<'EOF'
+KERNEL=="nvidia", RUN+="/usr/bin/nvidia-modprobe -c0 -u"
+KERNEL=="nvidia-uvm", RUN+="/usr/bin/nvidia-modprobe -u -c=0"
+SUBSYSTEM=="module", ACTION=="add", KERNEL=="nvidia", RUN+="/usr/bin/nvidia-modprobe -c0 -u"
+SUBSYSTEM=="module", ACTION=="add", KERNEL=="nvidia_uvm", RUN+="/usr/bin/nvidia-modprobe -u -c=0"
+KERNEL=="nvidia*", MODE="0666"
+EOF
+}
+
+# Make the CUDA toolkit's nvcc available in login shells. The toolkit itself is
+# declared via package metadata (NVIDIA repo), not bundled into the kernel deb.
+install_cuda_profile() {
+    local pkgroot="$1"
+    mkdir -p "${pkgroot}/etc/profile.d"
+    cat > "${pkgroot}/etc/profile.d/cachyos-cuda.sh" <<'EOF'
+# Managed by the CachyOS NVIDIA kernel package
+export CUDA_HOME=/usr/local/cuda
+export PATH="$CUDA_HOME/bin:$PATH"
+EOF
+}
+## end of nvidia helper functions ##
+
 # Generate dynamic description
 DESC="Linux ${KERNEL_VERSION} CachyOS kernel [${_cpusched^^} sched] [${_preempt} preempt] [${_HZ_ticks}Hz] [BBRv3]"
 [[ "$_use_llvm_lto" != "none" ]] && DESC+=" [Clang-${_use_llvm_lto^^} LTO]" || DESC+=" [GCC]"
@@ -509,6 +659,9 @@ if [[ "$_build_archpkg" == "yes" ]]; then
         mkdir -p "${ARCH_IMG}/usr/lib/modules"
         cp -a "${INSTALL_DIR}/lib/modules/${KERNEL_VERSION}" "${ARCH_IMG}/usr/lib/modules/"
     fi
+    # NVIDIA modules are owned solely by the split NVIDIA package.
+    # Keeping them here too causes dpkg/pacman duplicate-file errors.
+    find "${ARCH_IMG}/usr/lib/modules/${KERNEL_VERSION}/kernel/extra" -type f -name 'nvidia*.ko.zst' -delete 2>/dev/null || true
     cp -a "${INSTALL_DIR}/etc" "${ARCH_IMG}/" 2>/dev/null || true
 
     # mkinitcpio preset
@@ -596,6 +749,15 @@ EOF
         rm -rf "${NVIDIA_DIR}"
         mkdir -p "${NVIDIA_DIR}/usr/lib/modules/${KERNEL_VERSION}/kernel/extra"
         mkdir -p "${NVIDIA_DIR}/usr/share/licenses/linux-cachyos-nvidia"
+        # Keep nouveau from grabbing the GPU before the proprietary nvidia module probes it.
+        if [ "$_blacklist_nouveau" = "yes" ]; then
+            print_info "Shipping nouveau blacklist in NVIDIA package"
+            install_nouveau_blacklist "${NVIDIA_DIR}"
+        fi
+        if [ "$_cuda_setup" = "yes" ]; then
+            print_info "Adding CUDA ${_cuda_ver} environment profile"
+            install_cuda_profile "${NVIDIA_DIR}"
+        fi
 
         # Copy NVIDIA .ko.zst modules (already compressed in staging)
         find "${MODULES_BASE_DIR}/${KERNEL_VERSION}/kernel/extra" -name "nvidia*.ko.zst" -exec cp {} "${NVIDIA_DIR}/usr/lib/modules/${KERNEL_VERSION}/kernel/extra/" \;
@@ -637,12 +799,20 @@ pkgver = ${NVIDIA_PKGVER}
 EOF
 
         # .INSTALL script
+        # The early-boot initramfs must be rebuilt with the nouveau blacklist in place,
+        # otherwise udev can load nouveau first and nvidia cannot claim the GPU.
         cat > "${NVIDIA_DIR}/.INSTALL" << EOF
 post_install() {
     depmod ${KERNEL_VERSION}
+    if command -v mkinitcpio >/dev/null 2>&1; then
+        mkinitcpio -p kernel-${KERNEL_VERSION} || true
+    fi
 }
 post_upgrade() {
     depmod ${KERNEL_VERSION}
+    if command -v mkinitcpio >/dev/null 2>&1; then
+        mkinitcpio -p kernel-${KERNEL_VERSION} || true
+    fi
 }
 post_remove() {
     depmod ${KERNEL_VERSION}
@@ -786,6 +956,9 @@ if [[ "$_build_deb" == "yes" ]]; then
         # Remove build symlink owned by headers package, not image package
         rm -f "${DEB_IMG}/lib/modules/${KERNEL_VERSION}/build"
     fi
+    # NVIDIA modules are owned solely by the split NVIDIA package.
+    # Keeping them here too causes dpkg "trying to overwrite ... also in package" errors.
+    find "${DEB_IMG}/${MODULES_PATH}/${KERNEL_VERSION}/kernel/extra" -type f -name 'nvidia*.ko.zst' -delete 2>/dev/null || true
     
     cp -a "${INSTALL_DIR}/boot/"* "${DEB_IMG}/boot/"
     
@@ -952,6 +1125,12 @@ EOF
         rm -rf "${DEB_NV}"
         mkdir -p "${DEB_NV}/DEBIAN" "${DEB_NV}/usr/lib/modules/${KERNEL_VERSION}/kernel/extra"
         mkdir -p "${DEB_NV}/usr/share/doc/linux-cachyos-nvidia"
+        
+        # Keep nouveau from grabbing the GPU before the proprietary nvidia module probes it.
+        if [ "$_blacklist_nouveau" = "yes" ]; then
+            print_info "Shipping nouveau blacklist in NVIDIA package"
+            install_nouveau_blacklist "${DEB_NV}"
+        fi
 
         # Copy NVIDIA modules (already zstd-compressed from staging)
         find "${MODULES_BASE_DIR}/${KERNEL_VERSION}/kernel/extra" -name "nvidia*.ko.zst" -exec cp {} "${DEB_NV}/usr/lib/modules/${KERNEL_VERSION}/kernel/extra/" \;
@@ -963,22 +1142,49 @@ EOF
         if [ -f "${DOWNLOAD_DIR}/${_nv_pkg}/LICENSE" ]; then
             cp "${DOWNLOAD_DIR}/${_nv_pkg}/LICENSE" "${DEB_NV}/usr/share/doc/linux-cachyos-nvidia/copyright"
         fi
+        # Bundle the matching user-space so a single install gives working CUDA.
+        if [ "$_nv_userspace" = "yes" ]; then
+            print_info "Bundling NVIDIA ${_nv_ver} user-space into the NVIDIA package"
+            install_nvidia_userspace "${DEB_NV}" "${DOWNLOAD_DIR}/${_nv_pkg}" "${_nv_ver}"
+        fi
+        if [ "$_cuda_setup" = "yes" ]; then
+            print_info "Adding CUDA ${_cuda_ver} environment profile"
+            install_cuda_profile "${DEB_NV}"
+        fi
+
+        # Build the control fields that depend on the CUDA toggle
+        NV_DEPENDS="Depends: ${DEB_IMG_PKG} (= ${DEB_VERSION}), libc6 (>= 2.34), libgcc-s1, libssl3t64, libtirpc3t64, adduser, ocl-icd-libopencl1"
+        NV_RECOMMENDS=""
+        if [ "$_cuda_setup" = "yes" ]; then
+            case "$_cuda_toolkit_dep" in
+                depends)    NV_DEPENDS="${NV_DEPENDS}, cuda-toolkit-${_cuda_ver}" ;;
+                recommends) NV_RECOMMENDS="Recommends: cuda-toolkit-${_cuda_ver}" ;;
+            esac
+        fi
 
         # DEBIAN/control
-        cat > "${DEB_NV}/DEBIAN/control" << EOF
+        {
+        cat << EOF
 Package: ${DEB_NV_PKG}
 Version: ${DEB_VERSION}
 Section: kernel
 Priority: optional
 Maintainer: GitHub User <github@example.com>
 Architecture: amd64
-Depends: ${DEB_IMG_PKG} (= ${DEB_VERSION})
-Recommends: nvidia-driver, nvidia-dkms
-Conflicts: nvidia-driver, nvidia-dkms
-Description: NVIDIA proprietary kernel modules for ${DESC}
- Contains the NVIDIA kernel modules (nvidia, nvidia-modeset, nvidia-drm, nvidia-uvm)
- built for the ${KERNEL_VERSION} CachyOS kernel.
+${NV_DEPENDS}
 EOF
+        [ -n "$NV_RECOMMENDS" ] && printf '%s\n' "$NV_RECOMMENDS"
+        cat << EOF
+Provides: libcuda.so.1, libnvidia-ml.so.1, libnvidia-cfg1, libnvidia-gpucomp, nvidia-opencl-icd, opencl-icd, nvidia-modprobe, nvidia-persistenced
+Conflicts: nvidia-driver, nvidia-driver-580, nvidia-dkms, nvidia-dkms-580, nvidia-utils-580, nvidia-compute-utils-580, libnvidia-extra-580, libnvidia-compute-580, libnvidia-gl-580, libnvidia-cfg1-580, libnvidia-gpucomp-580, libnvidia-decode-580, libnvidia-encode-580, libnvidia-fbc1-580, nvidia-modprobe, nvidia-persistenced, nvidia-firmware-580, xserver-xorg-video-nvidia-580
+Replaces: nvidia-modprobe, nvidia-persistenced
+Description: NVIDIA proprietary kernel modules and user-space for ${DESC}
+ Contains the NVIDIA kernel modules (nvidia, nvidia-modeset, nvidia-drm, nvidia-uvm)
+ built for the ${KERNEL_VERSION} CachyOS kernel, plus the matching ${_nv_ver}
+ user-space (libcuda, NVML, nvidia-smi, nvidia-modprobe, firmware) so CUDA works
+ after installing this package.
+EOF
+        } > "${DEB_NV}/DEBIAN/control"
 
         # DEBIAN/postinst
         cat > "${DEB_NV}/DEBIAN/postinst" << EOF
@@ -991,8 +1197,16 @@ if [ "\$1" = configure ]; then
     if [ -d "\$moddir" ]; then
         depmod "\$version" || true
     fi
+    # Register the bundled user-space libraries and device-node rules.
+    ldconfig || true
+    if command -v udevadm >/dev/null 2>&1; then
+        udevadm control --reload-rules 2>/dev/null || true
+        udevadm trigger 2>/dev/null || true
+    fi
+    # Regenerate with the nouveau blacklist (shipped in this package) in place,
+    # otherwise udev can load nouveau first and nvidia cannot claim the GPU.
     if command -v update-initramfs >/dev/null 2>&1; then
-        update-initramfs -u -k "\$version" 2>/dev/null || true
+        update-initramfs -u -k "\$version" 2>/dev/null || update-initramfs -c -k "\$version" 2>/dev/null || true
     fi
 fi
 exit 0
@@ -1020,6 +1234,9 @@ EOF
 set -e
 version='${KERNEL_VERSION}'
 
+if [ "\$1" = remove ] || [ "\$1" = purge ]; then
+    ldconfig 2>/dev/null || true
+fi
 if [ "\$1" = purge ]; then
     rm -rf "/usr/lib/modules/\$version/kernel/extra/nvidia"* 2>/dev/null || true
 fi
@@ -1124,6 +1341,16 @@ fi
 print_step "Step 11: Verification & Summary"
 print_warning "The kernel has been built successfully!"
 echo "=========================================="
+if [ "$_build_nvidia" = "yes" ]; then
+    print_warning "NVIDIA builds require BOTH packages: install the image package first, then the NVIDIA package."
+    print_info "The NVIDIA package owns the nvidia*.ko modules, the nouveau blacklist and the matching user-space; the image stays generic."
+    [ "$_nv_userspace" = "yes" ] && print_info "After installing it, verify with: nvidia-smi"
+    if [ "$_cuda_setup" = "yes" ]; then
+        print_info "CUDA ${_cuda_ver}: profile script shipped in the NVIDIA deb puts nvcc on PATH."
+        print_warning "Use cuda-toolkit-${_cuda_ver} from NVIDIA's repo - NOT Ubuntu's nvidia-cuda-toolkit (old, conflicts)."
+        echo "sudo apt install cuda-toolkit-${_cuda_ver}"
+    fi
+fi
 if [[ "$_build_archpkg" == "yes" ]]; then
     PACMAN_PKGVER="${KERNEL_VERSION//-/.}-${pkgrel}"
     echo " Arch Image:   sudo pacman -U ${BUILD_DIR}/linux-cachyos-${_cpusched}-${PACMAN_PKGVER}-x86_64.pkg.tar.zst"
@@ -1148,6 +1375,16 @@ print_info "Post-install steps:"
 echo "sudo depmod -a ${KERNEL_VERSION}"
 echo "sudo update-initramfs -c -k ${KERNEL_VERSION}"
 echo "sudo update-grub"
+if [[ "$_build_nvidia" = "yes" && "$_blacklist_nouveau" = "yes" ]]; then
+    echo
+    print_info "The NVIDIA packages (not the generic image) ship /etc/modprobe.d/blacklist-cachyos-nouveau.conf"
+    print_info "and regenerate the initramfs on install so nouveau cannot claim the GPU first."
+    print_info "To fix the currently running kernel without a rebuild:"
+    cat <<'EOF'
+printf 'blacklist nouveau\noptions nouveau modeset=0\ninstall nouveau /bin/false\n' | sudo tee /etc/modprobe.d/blacklist-cachyos-nouveau.conf
+sudo update-initramfs -u -k $(uname -r) && sudo reboot
+EOF
+fi
 echo
 print_info "Build directory preserved at: ${BUILD_DIR}"
 print_info "Config saved at: ${BUILD_DIR}/config-${KERNEL_VERSION}"
