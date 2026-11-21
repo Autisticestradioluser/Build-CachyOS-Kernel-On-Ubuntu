@@ -81,13 +81,13 @@ _minor=5
 _tagrel=2
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
-pkgrel=1
+pkgrel=2
 _srcver=${_major}.${_minor}-${_tagrel}
 _srcname=cachyos-${_srcver}
 
 # Checksums (Update per release)
-_kernel_b2sum=${_kernel_b2sum:-438505cf485af55d63f82675df5d57c8f584abad72c1aacf5e126e8cdc5b2a0153e05ec017769aaf70fc081e3969ba3e83760556a6d53d3f7a0641961c71cce2}
-_config_b2sum=${_config_b2sum:-1857e2984cb148c524dc178e41a45dae8b1c649267150fe29b86bd3fc75358c6e1aa203d70f152d0f62fc6ac37de81cfa5e5e06f5cb3716eb7bed36525416fe1}
+_kernel_b2sum=${_kernel_b2sum:-34499a44a378dd7a330f2fa821ebdef10f477af461e1e40f193a85c188133627c885ddd636693c4ec895c1e22ffe6d0378948ee6c51a6d9a36dca262784f916a}
+_config_b2sum=${_config_b2sum:-c96bc76381a6aa601ae39663dd8c21cd2f4503d6d13ee944770a5b46f70175b9280159c7ff3a2fa3d29ada7fe82cdf95ca6715d3d9489a27b044154db0355789}
 
 # GPG keys for signature verification
 _validpgpkeys=(
