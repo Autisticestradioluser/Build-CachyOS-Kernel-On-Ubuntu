@@ -9,9 +9,9 @@
 This script automates the process of building the Linux kernel on Ubuntu Resolute (26.04 LTS), applying patches from **CachyOS**, and generating both:
 
 - A `.deb` package for Debian and Ubuntu-based systems.
-- An *incomplete* Arch Linux package (work in progress).
+- A complete Arch Linux package (`.pkg.tar.zst`) with proper package metadata.
 
-The goal is to create a streamlined, reproducible kernel build pipeline tailored for Debian and Ubuntu users that may also have an Arch PC or dual boot but just want to compile the kernel once.
+The goal is to create a streamlined kernel build pipeline tailored for Debian and Ubuntu users that may also have an Arch PC or dual boot but just want to compile the kernel once. Arch package metadata is reproducible when `SOURCE_DATE_EPOCH` is set (timestamps, mtimes and gzip headers are normalised).
 > Note that if you use `_processor_opt=${_processor_opt:-native}` you will need to be sure that both CPUs are the same in clang which may make it more suitable for a dual boot configuration
 
 ---
@@ -19,7 +19,7 @@ The goal is to create a streamlined, reproducible kernel build pipeline tailored
 ## 📦 What You Get
 
 ✅ `.deb` package compatible with Ubuntu Resolute and Debian Forky
-⚠️ Arch package — currently incomplete; will not install correctly  
+✅ Arch package — complete with `.PKGINFO`/`.MTREE` metadata
 🔧 CachyOS patches applied  
 🔄 Automated build workflow using standard tools (`make`, `fakeroot`, `dpkg-deb`, etc.)  
 
@@ -91,7 +91,7 @@ This script is specifically designed for:
 
 - **Ubuntu Resolute (26.04 LTS)** 
 - Handling **modern merged-usr filesystem layout**
-- Users who may need to build kernels for both Debian/Ubuntu and Arch Linux systems (though Arch support is currently incomplete)
+- Users who may need to build kernels for both Debian/Ubuntu and Arch Linux systems
 
 ---
 
@@ -99,8 +99,8 @@ This script is specifically designed for:
 
 - **Modern Ubuntu Support**: Handles merged-usr filesystem structure with `/lib -> /usr/lib` symlink
 - **Configurable Build Options**: Customize scheduler, optimization, kernel modules, and more
-- **NVIDIA Driver Integration**: Build with NVIDIA Proprietary 580 series drivers or open drivers for Turing+
-- **Arch Linux Support**: Generate mkinitcpio presets (though installation is incomplete, only makes a corrupted package due to no metedata for the package manager yet)
+- **NVIDIA Driver Integration**: Build with NVIDIA proprietary 580 series drivers (Maxwell/Pascal pin). The Debian NVIDIA package bundles the matching user-space and a CUDA profile; since Ubuntu 26.04's CUDA repo only ships 13.x, `_cuda_download=yes` fetches and verifies CUDA 12.9 (the last Pascal-capable toolkit) from NVIDIA's ubuntu2404 debs as local files for manual installation, without adding a foreign apt source
+- **Arch Linux Support**: Generate mkinitcpio presets and a complete pacman package. The headers split is always built (upstream semantics); Arch packages carry validated `.PKGINFO`/`.MTREE`/`.BUILDINFO` metadata
 
 ---
 
@@ -108,18 +108,22 @@ This script is specifically designed for:
 
 ### Before You Begin
 
-1. **Verify system requirements**: Make sure you have the latest clang-21 from LLVM, fakeroot, and dpkg-dev if you want to build it into a .deb package. Minimum of 8 GB RAM with zstd compressed zram for full LTO build.
+1. **Verify system requirements**: Make sure you have the latest clang-22 from LLVM, fakeroot, and dpkg-dev if you want to build it into a .deb package. Minimum of 8 GB RAM with zstd compressed zram for full LTO build.
 
 2. **Manual verification**: It's recommended to verify integrity of downloaded components using b2sums (the script does this automatically for most files, but you may want to verify the source files manually before proceeding)
 
-3. **NVIDIA Notes**: The script uses NVIDIA driver series 580 (legacy drivers for Maxwell-Pascal architectures). For Turing+ GPUs, the NVIDIA open driver is available and often a better choice.
+3. **NVIDIA Notes**: The script uses NVIDIA driver series 580 (legacy drivers for Maxwell-Pascal architectures). The open-driver variant is not currently wired into this branch (tracked as a follow-up). With `_build_nvidia=yes` the Debian package bundles the matching user-space for the pinned series and ships a CUDA profile. CUDA options:
+   - `_cuda_setup=yes` (default): ship the profile and declare the toolchain dependency.
+   - `_cuda_meta` (default `cuda-minimal-build-12-9`): package set declared and fetched. The minimal build has nvcc, nvvm, cudart, CCCL and profiler headers (~81 MiB); `cuda-toolkit-12-9` adds docs, Nsight and visual tools (~3.7 GiB).
+   - `_cuda_toolkit_dep=recommends` (default) | `depends` | `none`: how the Debian package declares it.
+   - `_cuda_download=yes`: download NVIDIA's verified `.debs` from the ubuntu2404 index into the build directory. The final summary generates `install-debs.sh`, which installs the kernel, headers, NVIDIA modules and the downloaded CUDA packages in stages (`sudo <build-dir>/install-debs.sh`). Nothing is installed automatically and Resolute's apt sources are not modified. If the build finishes without this option, the final summary offers to download the packages then.
 
 ### Critical Warnings
 
 > ⚠️ **This script is experimental and may cause system instability if used incorrectly**
 > 
 > - The NVIDIA driver integration may conflict with existing NVIDIA installations
-> - The Arch Linux package is **not fully functional** and should only be used for manual installation experiments
+> - The Arch Linux package is complete but untested on Arch systems
 > - **Source integrity is verified but package integrity is not** - Verify packages manually after build
 
 ---
@@ -146,10 +150,10 @@ When reporting issues, please include:
 After successful build, you'll find:
 
 - `.deb` package at: `./linux-cachyos-<configuration>-<version>-amd64.deb`
-- Arch Linux package (incomplete) at: `./linux-cachyos-<configuration>-<version>-x86_64.pkg.tar.zst`
+- Arch Linux package at: `./linux-cachyos-<configuration>-<version>-x86_64.pkg.tar.zst`
 - Configuration files at: `./config-<kernel-version>`
 
-> **Important**: The Arch package is experimental and likely requires manual adjustments to work. The Debian package is the only supported output.
+> **Important**: The Arch package is metadata-complete and validated in-script (member order, `.MTREE` digests, size, scriptlets) but has not been install-tested on an Arch system. The Debian package is the primary supported output.
 > **Security Note**: The generated packages do not include checksums. It is recommended to manually verify the package before installation.
 
 > **Source integrity is verified**: The script now checks b2sums for downloaded sources and patches, but package integrity verification is not implemented.
